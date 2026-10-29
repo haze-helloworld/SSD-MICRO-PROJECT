@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: ws-backplane
+    env: docker
+    dockerfilePath: Dockerfile
+    plan: free
+    region: oregon
+    envVars:
+      - key: PORT
+        value: 8080
+      - key: BACKPLANE
+        value: memory
+      - key: DEV_TOKENS
+        value: "true"
+      - key: JWT_SECRET
+        generateValue: true
+      # To connect to external Redis, change BACKPLANE to redis and set REDIS_URL:
+      # - key: BACKPLANE
+      #   value: redis
+      # - key: REDIS_URL
+      #   sync: false
+
