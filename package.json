@@ -1,0 +1,36 @@
+{
+  "name": "ws-backplane",
+  "version": "1.0.0",
+  "description": "Stateful WebSocket gateway cluster with a Redis pub/sub + Streams backplane (mini-Discord demo)",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "dev": "tsx src/server.ts",
+    "start": "tsx src/server.ts",
+    "start:prod": "node dist/src/server.js",
+    "test": "tsx --test tests/unit.test.ts tests/observability.test.ts",
+    "test:integration": "tsx --test --test-concurrency=1 tests/integration.test.ts",
+    "test:fault": "tsx --test --test-concurrency=1 tests/fault.test.ts",
+    "test:all": "tsx --test --test-concurrency=1 tests/*.test.ts",
+    "bench": "tsx bench/bench.ts",
+    "token": "tsx scripts/mint-token.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-cloudwatch": "^3.1158.0",
+    "ioredis": "^5.4.1",
+    "jsonwebtoken": "^9.0.2",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.6",
+    "@types/node": "^22.5.0",
+    "@types/ws": "^8.5.12",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.4"
+  }
+}

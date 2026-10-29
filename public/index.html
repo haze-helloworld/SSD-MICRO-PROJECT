@@ -1,0 +1,1814 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SSD Micro Project · Discord Chat & Backstage Observability</title>
+<style>
+  :root {
+    --bg-darkest: #1e1f22;
+    --bg-dark: #2b2d31;
+    --bg-main: #313338;
+    --bg-hover: #35373c;
+    --text-normal: #dbdee1;
+    --text-muted: #949ba4;
+    --text-white: #ffffff;
+    --discord-blurple: #5865f2;
+    --discord-green: #23a55a;
+    --discord-yellow: #f0b232;
+    --discord-red: #f23f43;
+    --border: #3f4147;
+    --card-bg: #232428;
+    --accent-glow: rgba(88, 101, 242, 0.4);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg-darkest);
+    color: var(--text-normal);
+    overflow: hidden;
+  }
+
+  /* TOP HEADER / APP BAR */
+  #top-bar {
+    height: 48px;
+    background: #111214;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    border-bottom: 1px solid #00000040;
+    z-index: 100;
+  }
+  .app-title {
+    font-weight: 700;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-white);
+  }
+  .badge-ssd {
+    background: linear-gradient(135deg, #5865f2, #9b59b6);
+    color: #fff;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+  }
+  .nav-tabs {
+    display: flex;
+    gap: 4px;
+    background: #1e1f22;
+    padding: 3px;
+    border-radius: 6px;
+  }
+  .nav-tab {
+    padding: 6px 14px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    background: transparent;
+    color: var(--text-muted);
+    border: none;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .nav-tab:hover { color: var(--text-normal); background: rgba(255,255,255,0.05); }
+  .nav-tab.active {
+    background: var(--discord-blurple);
+    color: #fff;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  }
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .cw-status-pill {
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    background: rgba(35, 165, 90, 0.15);
+    color: var(--discord-green);
+    border: 1px solid rgba(35, 165, 90, 0.3);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .cw-status-pill.standby {
+    background: rgba(240, 178, 50, 0.15);
+    color: var(--discord-yellow);
+    border-color: rgba(240, 178, 50, 0.3);
+  }
+  .live-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: currentColor;
+    display: inline-block;
+    box-shadow: 0 0 6px currentColor;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
+
+  /* VIEW CONTAINERS */
+  #views-wrapper {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+    position: relative;
+  }
+  .view-pane {
+    flex: 1;
+    display: none;
+    height: 100%;
+    overflow: hidden;
+  }
+  .view-pane.active {
+    display: flex;
+  }
+  /* Split Mode */
+  .split-mode .view-pane {
+    display: flex !important;
+    flex: 1 1 50%;
+    border-right: 1px solid var(--border);
+  }
+
+  /* ================= DISCORD CHAT UI ================= */
+  #chat-view {
+    flex: 1;
+    display: flex;
+    background: var(--bg-main);
+  }
+  /* Server / Guild Icon Strip */
+  #guilds-rail {
+    width: 68px;
+    background: var(--bg-darkest);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 12px 0;
+    gap: 10px;
+    border-right: 1px solid rgba(0,0,0,0.2);
+  }
+  .guild-icon {
+    width: 46px;
+    height: 46px;
+    border-radius: 23px;
+    background: var(--bg-dark);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: 0.2s;
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--text-normal);
+  }
+  .guild-icon:hover, .guild-icon.active {
+    border-radius: 14px;
+    background: var(--discord-blurple);
+    color: #fff;
+  }
+
+  /* Channels Sidebar */
+  #channels-side {
+    width: 220px;
+    background: var(--bg-dark);
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid rgba(0,0,0,0.1);
+  }
+  .server-header {
+    height: 48px;
+    padding: 0 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-weight: 700;
+    color: var(--text-white);
+    border-bottom: 1px solid rgba(0,0,0,0.2);
+    font-size: 14px;
+  }
+  .channels-list {
+    flex: 1;
+    padding: 12px 8px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .channel-category {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 6px 8px;
+    letter-spacing: 0.5px;
+  }
+  .channel-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    border-radius: 4px;
+    color: var(--text-muted);
+    font-size: 13px;
+    cursor: pointer;
+    transition: 0.1s;
+  }
+  .channel-item:hover {
+    background: var(--bg-hover);
+    color: var(--text-normal);
+  }
+  .channel-item.active {
+    background: var(--bg-hover);
+    color: var(--text-white);
+    font-weight: 600;
+  }
+  .user-badge-bar {
+    height: 52px;
+    background: #232428;
+    padding: 0 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 12px;
+  }
+  .user-info-tiny {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .avatar-circle {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--discord-blurple);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    color: #fff;
+    font-size: 12px;
+    position: relative;
+  }
+  .online-indicator {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--discord-green);
+    position: absolute;
+    bottom: -1px;
+    right: -1px;
+    border: 2px solid #232428;
+  }
+
+  /* Chat Main Area */
+  #chat-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-main);
+    min-width: 0;
+  }
+  .chat-header {
+    height: 48px;
+    padding: 0 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid rgba(0,0,0,0.2);
+  }
+  .channel-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+    color: var(--text-white);
+    font-size: 15px;
+  }
+  .channel-desc {
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: normal;
+    border-left: 1px solid var(--border);
+    padding-left: 8px;
+  }
+  .chaos-btn {
+    padding: 6px 10px;
+    background: rgba(242, 63, 67, 0.15);
+    border: 1px solid var(--discord-red);
+    color: #ff8588;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.15s;
+  }
+  .chaos-btn:hover {
+    background: var(--discord-red);
+    color: #fff;
+  }
+
+  #messages-scroller {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .msg-card {
+    display: flex;
+    gap: 12px;
+    padding: 4px 6px;
+    border-radius: 4px;
+    transition: background 0.1s;
+  }
+  .msg-card:hover {
+    background: rgba(0,0,0,0.1);
+  }
+  .msg-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    color: #fff;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+  .msg-content {
+    flex: 1;
+    min-width: 0;
+  }
+  .msg-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 3px;
+  }
+  .msg-author {
+    font-weight: 600;
+    color: var(--text-white);
+    font-size: 14px;
+  }
+  .msg-time {
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .seq-badge {
+    font-size: 10px;
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: #232428;
+    color: #58a6ff;
+    font-family: monospace;
+    font-weight: 700;
+    border: 1px solid #30363d;
+  }
+  .msg-text {
+    font-size: 14px;
+    line-height: 1.4;
+    word-break: break-word;
+    color: var(--text-normal);
+  }
+  .msg-sys {
+    font-style: italic;
+    color: var(--text-muted);
+    font-size: 12px;
+    padding: 2px 0;
+  }
+
+  /* Chat Input */
+  .chat-input-bar {
+    padding: 0 16px 16px;
+  }
+  .typing-status {
+    height: 18px;
+    font-size: 11px;
+    color: var(--text-muted);
+    padding-left: 4px;
+  }
+  .input-wrapper {
+    background: #383a40;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    padding: 4px 12px;
+    gap: 8px;
+  }
+  .input-wrapper input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text-white);
+    font-size: 14px;
+    padding: 8px 0;
+    outline: none;
+  }
+  .send-btn {
+    background: var(--discord-blurple);
+    color: #fff;
+    border: none;
+    padding: 6px 14px;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  /* Members Sidebar */
+  #members-side {
+    width: 180px;
+    background: var(--bg-dark);
+    padding: 16px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow-y: auto;
+    border-left: 1px solid rgba(0,0,0,0.1);
+  }
+  .members-category {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+  }
+  .member-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px;
+    border-radius: 4px;
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+  .member-row.active {
+    color: var(--text-normal);
+  }
+
+  /* ================= BACKSTAGE OBSERVABILITY UI ================= */
+  #backstage-view {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #141517;
+    overflow-y: auto;
+  }
+  .backstage-container {
+    padding: 20px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    max-width: 1600px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .backstage-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .b-title {
+    font-size: 20px;
+    font-weight: 800;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .b-subtitle {
+    color: var(--text-muted);
+    font-size: 12px;
+    margin-top: 3px;
+  }
+
+  /* SECTION CARDS */
+  .dash-card {
+    background: #1e1f24;
+    border: 1px solid #2d2f36;
+    border-radius: 10px;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+  }
+  .card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .card-label {
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-subtext {
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  /* ARCHITECTURE DIAGRAM SVG AREA */
+  .diagram-container {
+    position: relative;
+    background: #121316;
+    border-radius: 8px;
+    border: 1px solid #26282e;
+    overflow: hidden;
+    min-height: 280px;
+  }
+  #flow-svg {
+    width: 100%;
+    height: 280px;
+  }
+  .node-rect {
+    fill: #22242b;
+    stroke: #3e424d;
+    stroke-width: 2;
+    rx: 8;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .node-rect:hover {
+    stroke: var(--discord-blurple);
+    fill: #2a2c36;
+    filter: drop-shadow(0 0 8px var(--accent-glow));
+  }
+  .node-title {
+    fill: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    font-family: inherit;
+  }
+  .node-sub {
+    fill: #8b929e;
+    font-size: 10px;
+    font-family: inherit;
+  }
+  .node-stat {
+    fill: #58a6ff;
+    font-size: 11px;
+    font-weight: 600;
+    font-family: monospace;
+  }
+  .pipe-path {
+    fill: none;
+    stroke: #333842;
+    stroke-width: 3;
+    stroke-dasharray: 4, 4;
+  }
+  .pipe-path.active {
+    stroke: #5865f2;
+    stroke-width: 3;
+    animation: dash 1s linear infinite;
+  }
+  @keyframes dash {
+    to { stroke-dashoffset: -16; }
+  }
+  .packet-dot {
+    r: 5;
+    fill: #23a55a;
+    filter: drop-shadow(0 0 4px #23a55a);
+  }
+
+  /* SIMULATION CONTROLS BAR */
+  .sim-panel {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    background: #18191d;
+    border: 1px solid #282a32;
+    padding: 16px;
+    border-radius: 8px;
+  }
+  .control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .control-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-normal);
+    display: flex;
+    justify-content: space-between;
+  }
+  .control-val {
+    color: var(--discord-blurple);
+    font-weight: 700;
+    font-family: monospace;
+  }
+  .sim-slider {
+    width: 100%;
+    accent-color: var(--discord-blurple);
+    cursor: pointer;
+  }
+  .sim-select {
+    background: #23252a;
+    border: 1px solid #383a42;
+    color: #fff;
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    outline: none;
+  }
+  .sim-btn-row {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+  }
+  .btn-sim {
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    transition: 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn-sim-start {
+    background: var(--discord-green);
+    color: #fff;
+  }
+  .btn-sim-start:hover { filter: brightness(1.1); }
+  .btn-sim-stop {
+    background: #e03e42;
+    color: #fff;
+  }
+  .btn-sim-spike {
+    background: #f0b232;
+    color: #111;
+  }
+
+  /* STATS METER TILES */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+  }
+  .stat-tile {
+    background: #18191d;
+    border: 1px solid #282a32;
+    padding: 12px 14px;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .stat-title {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+  .stat-number {
+    font-size: 22px;
+    font-weight: 800;
+    color: #fff;
+    font-family: monospace;
+  }
+  .stat-extra {
+    font-size: 10px;
+    color: var(--discord-green);
+  }
+
+  /* SERVICES STATUS GRID */
+  .services-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 14px;
+  }
+  .service-card {
+    background: #18191d;
+    border: 1px solid #282a32;
+    border-radius: 8px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    border-left: 4px solid var(--discord-green);
+  }
+  .service-card.standby { border-left-color: var(--discord-yellow); }
+  .service-card.unhealthy { border-left-color: var(--discord-red); }
+  .service-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .tier-tag {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: #2a2d36;
+    color: #abb2bf;
+  }
+  .tier-tag.aws {
+    background: rgba(255, 153, 0, 0.2);
+    color: #ff9900;
+    font-weight: 700;
+  }
+  .service-desc {
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.3;
+  }
+  .service-kv {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    border-top: 1px solid #23252a;
+    padding-top: 6px;
+  }
+
+  /* CLOUDWATCH CREDENTIALS MODAL */
+  #cw-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+  }
+  #cw-modal.open { display: flex; }
+  .modal-box {
+    background: #1e1f24;
+    border: 1px solid #333640;
+    border-radius: 12px;
+    width: 520px;
+    max-width: 90vw;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    box-shadow: 0 12px 36px rgba(0,0,0,0.6);
+  }
+  .modal-title {
+    font-size: 17px;
+    font-weight: 800;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .modal-desc {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.4;
+  }
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .form-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .form-input, .form-textarea {
+    background: #141518;
+    border: 1px solid #343740;
+    color: #fff;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-family: monospace;
+    outline: none;
+  }
+  .form-input:focus, .form-textarea:focus { border-color: var(--discord-blurple); }
+  .modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 6px;
+  }
+  .btn-outline {
+    background: transparent;
+    border: 1px solid #444752;
+    color: var(--text-normal);
+    padding: 8px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+  }
+  .btn-accent {
+    background: var(--discord-blurple);
+    border: none;
+    color: #fff;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 12px;
+  }
+
+  /* LIVE LOGS CONSOLE */
+  .logs-terminal {
+    background: #0d0e10;
+    border: 1px solid #23252a;
+    border-radius: 6px;
+    padding: 10px 14px;
+    height: 160px;
+    overflow-y: auto;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 11px;
+    color: #a9b7c6;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .log-line { display: flex; gap: 8px; }
+  .log-ts { color: #6272a4; }
+  .log-route { color: #50fa7b; }
+  .log-node { color: #bd93f9; }
+</style>
+</head>
+<body>
+
+<!-- TOP HEADER -->
+<header id="top-bar">
+  <div class="app-title">
+    <span style="font-size: 18px;">💬</span>
+    <span>SSD Cluster Backplane</span>
+    <span class="badge-ssd">SSD Project</span>
+  </div>
+
+  <div class="nav-tabs">
+    <button class="nav-tab active" id="tab-chat" onclick="switchView('chat')">
+      <span>💬</span> Discord Chat
+    </button>
+    <button class="nav-tab" id="tab-backstage" onclick="switchView('backstage')">
+      <span>🎛️</span> Backstage Observability
+    </button>
+    <button class="nav-tab" id="tab-split" onclick="switchView('split')">
+      <span>⚡</span> Split Screen
+    </button>
+  </div>
+
+  <div class="header-actions">
+    <div class="cw-status-pill standby" id="cw-pill" onclick="openCwModal()">
+      <span class="live-dot"></span>
+      <span id="cw-pill-text">CloudWatch: Local Standby</span>
+    </div>
+  </div>
+</header>
+
+<!-- MAIN VIEW WRAPPER -->
+<div id="views-wrapper">
+
+  <!-- ================= DISCORD CHAT VIEW ================= -->
+  <div class="view-pane active" id="chat-view">
+    <!-- Server Guild Rail -->
+    <div id="guilds-rail">
+      <div class="guild-icon active" title="SSD Backplane Server">SSD</div>
+      <div class="guild-icon" style="background:#5865f2; color:#fff;" title="Add Server">+</div>
+    </div>
+
+    <!-- Channel Sidebar -->
+    <div id="channels-side">
+      <div class="server-header">
+        <span>SSD Chat Cluster</span>
+        <span style="font-size:11px; color:var(--text-muted);">v1.0</span>
+      </div>
+      <div class="channels-list">
+        <div class="channel-category">Text Channels</div>
+        <div class="channel-item active" onclick="selectChannel('general')"># general</div>
+        <div class="channel-item" onclick="selectChannel('architecture')"># architecture</div>
+        <div class="channel-item" onclick="selectChannel('production-alerts')"># production-alerts</div>
+        <div class="channel-item" onclick="selectChannel('simulation-feed')"># simulation-feed</div>
+      </div>
+      <div class="user-badge-bar">
+        <div class="user-info-tiny">
+          <div class="avatar-circle" id="my-avatar">U
+            <div class="online-indicator"></div>
+          </div>
+          <div>
+            <div style="font-weight:700; color:#fff;" id="my-username">Guest</div>
+            <div style="font-size:10px; color:var(--text-muted);" id="my-node">gw-1</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chat Message Feed -->
+    <div id="chat-main">
+      <div class="chat-header">
+        <div class="channel-title">
+          <span style="color:var(--text-muted)">#</span>
+          <span id="current-channel-name">general</span>
+          <span class="channel-desc" id="current-channel-desc">Main room with Redis linearizable total order</span>
+        </div>
+        <button class="chaos-btn" onclick="simulateDrop()" title="Disconnect socket to test zero-loss gap repair">
+          ⚡ Simulate Drop & Catchup
+        </button>
+      </div>
+
+      <div id="messages-scroller">
+        <!-- Messages rendered dynamically -->
+      </div>
+
+      <div class="chat-input-bar">
+        <div class="typing-status" id="typing-bar"></div>
+        <div class="input-wrapper">
+          <input id="chat-input" placeholder="Message #general (press Enter to send)" autocomplete="off">
+          <button class="send-btn" onclick="sendMessage()">Send</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Members Sidebar -->
+    <div id="members-side">
+      <div class="members-category">Online — <span id="online-count">1</span></div>
+      <div id="members-list">
+        <!-- Members rendered dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= BACKSTAGE OBSERVABILITY VIEW ================= -->
+  <div class="view-pane" id="backstage-view">
+    <div class="backstage-container">
+      
+      <!-- Backstage Header -->
+      <div class="backstage-header">
+        <div>
+          <div class="b-title">
+            <span>🎛️ Backstage System Architecture & Real-Time Telemetry</span>
+          </div>
+          <div class="b-subtitle">
+            Live request routing through Ingress API Gateway, Load Balancer, Stateful WebSocket Nodes, Redis Backplane & AWS CloudWatch
+          </div>
+        </div>
+        <div style="display:flex; gap:10px;">
+          <button class="btn-sim btn-sim-spike" onclick="triggerSpike(50)">⚡ Burst 50 Reqs</button>
+          <button class="btn-sim" style="background:#3b404d; color:#fff;" onclick="openCwModal()">☁️ Configure AWS Credentials</button>
+        </div>
+      </div>
+
+      <!-- 1. REAL-TIME ARCHITECTURE TOPOLOGY DIAGRAM -->
+      <div class="dash-card">
+        <div class="card-top">
+          <div>
+            <div class="card-label">🌐 Real-Time Dynamic Request Flow Pipeline</div>
+            <div class="card-subtext">Click on any component node to inspect SSD design properties, guarantees, and live packet counters</div>
+          </div>
+          <div style="font-size:11px; color:#58a6ff; font-family:monospace;">
+            Animation: <span id="pipeline-status">Active Stream</span>
+          </div>
+        </div>
+
+        <div class="diagram-container">
+          <svg id="flow-svg" viewBox="0 0 1100 280">
+            <!-- Pipes (Connecting conduits) -->
+            <!-- Pipe 1: Clients -> API Gateway -->
+            <path id="pipe-clients-apigw" class="pipe-path active" d="M 120 140 L 250 140" />
+            <!-- Pipe 2: API Gateway -> Load Balancer -->
+            <path id="pipe-apigw-nlb" class="pipe-path active" d="M 370 140 L 470 140" />
+            <!-- Pipe 3: NLB -> Nodes (Branching) -->
+            <path id="pipe-nlb-gw1" class="pipe-path active" d="M 590 140 C 630 140, 640 70, 680 70" />
+            <path id="pipe-nlb-gw2" class="pipe-path active" d="M 590 140 L 680 140" />
+            <path id="pipe-nlb-gw3" class="pipe-path active" d="M 590 140 C 630 140, 640 210, 680 210" />
+            <!-- Pipe 4: Nodes -> Redis -->
+            <path id="pipe-gw1-redis" class="pipe-path active" d="M 800 70 C 840 70, 850 140, 890 140" />
+            <path id="pipe-gw2-redis" class="pipe-path active" d="M 800 140 L 890 140" />
+            <path id="pipe-gw3-redis" class="pipe-path active" d="M 800 210 C 840 210, 850 140, 890 140" />
+            <!-- Pipe 5: Redis -> CloudWatch / Store -->
+            <path id="pipe-redis-cw" class="pipe-path active" d="M 990 140 L 1020 140" />
+
+            <!-- Dynamic Packet Particles Container -->
+            <g id="packet-layer"></g>
+
+            <!-- Node 1: Client Fleet -->
+            <g class="node-group" onclick="inspectNode('clients')">
+              <rect class="node-rect" x="15" y="95" width="115" height="90" />
+              <text class="node-title" x="25" y="120">💻 Client Fleet</text>
+              <text class="node-sub" x="25" y="140">Browsers & Bots</text>
+              <text class="node-stat" x="25" y="165" id="node-stat-clients">10 Virtual Users</text>
+            </g>
+
+            <!-- Node 2: API Gateway / Ingress -->
+            <g class="node-group" onclick="inspectNode('apigw')">
+              <rect class="node-rect" x="245" y="95" width="130" height="90" />
+              <text class="node-title" x="255" y="120">🛡️ API Gateway</text>
+              <text class="node-sub" x="255" y="140">JWT Auth / Ingress</text>
+              <text class="node-stat" x="255" y="165" id="node-stat-apigw">Rate Limit: 40/s</text>
+            </g>
+
+            <!-- Node 3: Network Load Balancer (NLB) -->
+            <g class="node-group" onclick="inspectNode('nlb')">
+              <rect class="node-rect" x="465" y="95" width="130" height="90" />
+              <text class="node-title" x="475" y="120">⚖️ Load Balancer</text>
+              <text class="node-sub" x="475" y="140">L4 Flow-Hash (TCP)</text>
+              <text class="node-stat" x="475" y="165" id="node-stat-nlb">Health: /readyz</text>
+            </g>
+
+            <!-- Node 4: Gateway Cluster (3 nodes) -->
+            <g class="node-group" onclick="inspectNode('gw1')">
+              <rect class="node-rect" x="675" y="35" width="130" height="65" />
+              <text class="node-title" x="685" y="58">⚡ Node: gw-1</text>
+              <text class="node-sub" x="685" y="74">Stateful WS / Port 8080</text>
+              <text class="node-stat" x="685" y="90" id="node-stat-gw1">Active</text>
+            </g>
+            <g class="node-group" onclick="inspectNode('gw2')">
+              <rect class="node-rect" x="675" y="108" width="130" height="65" />
+              <text class="node-title" x="685" y="131">⚡ Node: gw-2</text>
+              <text class="node-sub" x="685" y="147">Stateful WS / Port 8081</text>
+              <text class="node-stat" x="685" y="163" id="node-stat-gw2">Active</text>
+            </g>
+            <g class="node-group" onclick="inspectNode('gw3')">
+              <rect class="node-rect" x="675" y="180" width="130" height="65" />
+              <text class="node-title" x="685" y="203">⚡ Node: gw-3</text>
+              <text class="node-sub" x="685" y="219">Stateful WS / Port 8082</text>
+              <text class="node-stat" x="685" y="235" id="node-stat-gw3">Active</text>
+            </g>
+
+            <!-- Node 5: Redis Backplane -->
+            <g class="node-group" onclick="inspectNode('redis')">
+              <rect class="node-rect" x="885" y="95" width="125" height="90" />
+              <text class="node-title" x="895" y="120">📦 Redis Backplane</text>
+              <text class="node-sub" x="895" y="140">Lua + Stream + PubSub</text>
+              <text class="node-stat" x="895" y="165" id="node-stat-redis">Linear Point</text>
+            </g>
+
+            <!-- Node 6: CloudWatch & Storage -->
+            <g class="node-group" onclick="inspectNode('cw')">
+              <rect class="node-rect" x="1025" y="95" width="65" height="90" />
+              <text class="node-title" x="1030" y="125">☁️ AWS</text>
+              <text class="node-sub" x="1030" y="145">CloudWatch</text>
+              <text class="node-stat" x="1030" y="165" id="node-stat-cw">Metrics</text>
+            </g>
+          </svg>
+        </div>
+      </div>
+
+      <!-- 2. SIMULATION CONTROL CENTER -->
+      <div class="dash-card">
+        <div class="card-top">
+          <div>
+            <div class="card-label">🚀 Real-Time Traffic & Load Simulation Generator</div>
+            <div class="card-subtext">Control concurrent client requests, fire synthetic workloads, and observe packet routing & throttles</div>
+          </div>
+          <div id="sim-live-badge" style="font-size:12px; font-weight:700; color:var(--text-muted);">
+            Status: Idle
+          </div>
+        </div>
+
+        <div class="sim-panel">
+          <!-- Slider: Number of Clients -->
+          <div class="control-group">
+            <div class="control-label">
+              <span>Concurrent Virtual Clients</span>
+              <span class="control-val" id="val-clients">10</span>
+            </div>
+            <input type="range" class="sim-slider" id="input-clients" min="1" max="100" value="10" oninput="updateSimInputs()">
+          </div>
+
+          <!-- Slider: Request Rate -->
+          <div class="control-group">
+            <div class="control-label">
+              <span>Throughput (Requests / sec)</span>
+              <span class="control-val" id="val-rate">5 req/s</span>
+            </div>
+            <input type="range" class="sim-slider" id="input-rate" min="1" max="50" value="5" oninput="updateSimInputs()">
+          </div>
+
+          <!-- Pattern Selector -->
+          <div class="control-group">
+            <div class="control-label">Traffic Load Pattern</div>
+            <select class="sim-select" id="select-pattern">
+              <option value="steady">Steady Load (Normal Discord Chat)</option>
+              <option value="spike">Spike Traffic (Surge Burst)</option>
+              <option value="ddos">High-Load Throttling (Trigger 429 Rate Limits)</option>
+              <option value="chaos">Chaos Drop & Auto-Resume (Gap Repair)</option>
+            </select>
+          </div>
+
+          <!-- Buttons -->
+          <div class="sim-btn-row">
+            <button class="btn-sim btn-sim-start" id="btn-toggle-sim" onclick="toggleSimulation()">
+              ▶ Start Simulation
+            </button>
+            <button class="btn-sim btn-sim-spike" onclick="triggerSpike(100)">
+              ⚡ 100 Reqs Spike
+            </button>
+          </div>
+        </div>
+
+        <!-- Simulation Counters Grid -->
+        <div class="stats-grid">
+          <div class="stat-tile">
+            <div class="stat-title">Total Synthetic Reqs</div>
+            <div class="stat-number" id="sim-stat-sent">0</div>
+            <div class="stat-extra">Generated through NLB</div>
+          </div>
+          <div class="stat-tile">
+            <div class="stat-title">Successfully Delivered</div>
+            <div class="stat-number" id="sim-stat-delivered" style="color:var(--discord-green);">0</div>
+            <div class="stat-extra">Gap-free ordered</div>
+          </div>
+          <div class="stat-tile">
+            <div class="stat-title">Rate Limited (429s)</div>
+            <div class="stat-number" id="sim-stat-throttled" style="color:var(--discord-yellow);">0</div>
+            <div class="stat-extra">Token bucket protected</div>
+          </div>
+          <div class="stat-tile">
+            <div class="stat-title">Avg Hop Latency</div>
+            <div class="stat-number" id="sim-stat-latency" style="color:#58a6ff;">12 ms</div>
+            <div class="stat-extra">Client-to-Backplane</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. AWS CLOUDWATCH & MULTI-SERVICE TELEMETRY GRID -->
+      <div class="dash-card">
+        <div class="card-top">
+          <div>
+            <div class="card-label">☁️ AWS CloudWatch & Multi-Cloud Services Grid</div>
+            <div class="card-subtext">Connected services: AWS Learner Lab ($50 credits), Local Containers, and Distributed Primaries</div>
+          </div>
+          <button class="btn-sim" style="background:#22242b; border:1px solid #3e424d; color:#fff;" onclick="testCwConnection()">
+            🔄 Test AWS CloudWatch Connection
+          </button>
+        </div>
+
+        <div class="services-grid" id="services-grid-cards">
+          <!-- Dynamically loaded from /api/services/status -->
+        </div>
+      </div>
+
+      <!-- 4. LIVE REQUEST TRACE AUDIT LOG -->
+      <div class="dash-card">
+        <div class="card-top">
+          <div>
+            <div class="card-label">📋 Live End-to-End Request Trace Console</div>
+            <div class="card-subtext">Hop-by-hop breakdown: Client → API Gateway → NLB → Gateway Node → Redis → CloudWatch</div>
+          </div>
+          <div style="font-size:11px; color:var(--text-muted);">
+            Auto-refresh: 1.5s
+          </div>
+        </div>
+
+        <div class="logs-terminal" id="traces-console">
+          <div class="log-line">
+            <span class="log-ts">[Ready]</span>
+            <span class="log-route">Observability listener initialized. Ready to trace packet journeys.</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- AWS CLOUDWATCH CREDENTIALS MODAL -->
+<div id="cw-modal">
+  <div class="modal-box">
+    <div class="modal-title">
+      <span>☁️</span> Configure AWS CloudWatch (Learner Lab)
+    </div>
+    <div class="modal-desc">
+      Use your AWS Learner Lab ($50 credits) credentials. Open your AWS Academy Learner Lab, click <b>"AWS Details"</b>, then copy the credentials from <b>"Show AWS CLI credentials"</b>:
+    </div>
+
+    <div class="form-group">
+      <div class="form-label">AWS Access Key ID</div>
+      <input class="form-input" id="modal-aws-key" placeholder="ASIA..." autocomplete="off">
+    </div>
+
+    <div class="form-group">
+      <div class="form-label">AWS Secret Access Key</div>
+      <input class="form-input" id="modal-aws-secret" type="password" placeholder="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY" autocomplete="off">
+    </div>
+
+    <div class="form-group">
+      <div class="form-label">AWS Session Token (Vocareum Learner Lab)</div>
+      <textarea class="form-textarea" id="modal-aws-token" rows="3" placeholder="IQoJb3JpZ2luX2VjE... (required for Learner Lab)"></textarea>
+    </div>
+
+    <div class="form-group">
+      <div class="form-label">AWS Region</div>
+      <input class="form-input" id="modal-aws-region" value="us-east-1">
+    </div>
+
+    <div style="font-size:11px; color:#949ba4;">
+      Namespace: <code style="color:#58a6ff;">SSDMicroProject/ChatCluster</code> · Custom PutMetricData batches every 5s.
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn-outline" onclick="closeCwModal()">Cancel</button>
+      <button class="btn-accent" onclick="saveCwConfig()">Save & Connect to AWS</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ================= GLOBAL STATE ================= */
+const $ = (s) => document.querySelector(s);
+const state = {
+  activeView: 'chat',
+  user: 'user_' + Math.floor(Math.random() * 900 + 100),
+  tenant: 'acme',
+  currentChannel: 'general',
+  token: '',
+  ws: null,
+  nodeId: 'gw-1',
+  attempt: 0,
+  pendingSends: new Map(),
+  typingUsers: {},
+  channels: {
+    'general': { lastSeq: 0, held: new Map(), joined: false, messages: [] },
+    'architecture': { lastSeq: 0, held: new Map(), joined: false, messages: [] },
+    'production-alerts': { lastSeq: 0, held: new Map(), joined: false, messages: [] },
+    'simulation-feed': { lastSeq: 0, held: new Map(), joined: false, messages: [] },
+  },
+  members: ['You (Client)'],
+  simActive: false,
+};
+
+/* ================= VIEW SWITCHER ================= */
+function switchView(view) {
+  state.activeView = view;
+  const wrapper = $('#views-wrapper');
+  wrapper.className = view === 'split' ? 'split-mode' : '';
+
+  $('#tab-chat').className = 'nav-tab' + (view === 'chat' ? ' active' : '');
+  $('#tab-backstage').className = 'nav-tab' + (view === 'backstage' ? ' active' : '');
+  $('#tab-split').className = 'nav-tab' + (view === 'split' ? ' active' : '');
+
+  if (view === 'split') {
+    $('#chat-view').style.display = 'flex';
+    $('#backstage-view').style.display = 'flex';
+  } else if (view === 'chat') {
+    $('#chat-view').style.display = 'flex';
+    $('#backstage-view').style.display = 'none';
+  } else {
+    $('#chat-view').style.display = 'none';
+    $('#backstage-view').style.display = 'flex';
+  }
+}
+
+/* ================= INITIALIZATION & AUTH ================= */
+async function initChat() {
+  $('#my-username').textContent = state.user;
+  $('#my-avatar').firstChild.textContent = state.user.charAt(0).toUpperCase();
+
+  // Obtain JWT token from gateway
+  try {
+    const res = await fetch('/dev/token', {
+      method: 'POST',
+      body: JSON.stringify({ user: state.user, tenant: state.tenant }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      state.token = data.token;
+      connectWs();
+    }
+  } catch (err) {
+    console.error('Failed to get token:', err);
+  }
+}
+
+/* ================= WEBSOCKET PROTOCOL ================= */
+function connectWs() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  const url = `${proto}://${location.host}/ws?token=${encodeURIComponent(state.token)}`;
+  const ws = (state.ws = new WebSocket(url));
+
+  ws.onopen = () => {
+    state.attempt = 0;
+  };
+
+  ws.onmessage = (e) => {
+    try {
+      const frame = JSON.parse(e.data);
+      handleFrame(frame);
+    } catch (err) {
+      console.error('Frame error:', err);
+    }
+  };
+
+  ws.onclose = () => {
+    if (state.ws !== ws) return;
+    Object.values(state.channels).forEach((ch) => (ch.joined = false));
+    const delay = Math.min(2000, 50 * 2 ** state.attempt++);
+    setTimeout(connectWs, delay);
+  };
+}
+
+const sendFrame = (f) => state.ws && state.ws.readyState === 1 && state.ws.send(JSON.stringify(f));
+
+function joinChannel(channelName) {
+  const ch = state.channels[channelName];
+  if (!ch) return;
+  sendFrame(ch.lastSeq > 0 ? { t: 'join', room: channelName, lastSeq: ch.lastSeq } : { t: 'join', room: channelName });
+}
+
+function handleFrame(f) {
+  switch (f.t) {
+    case 'welcome':
+      state.nodeId = f.node;
+      $('#my-node').textContent = f.node;
+      Object.keys(state.channels).forEach(joinChannel);
+      break;
+
+    case 'joined': {
+      const ch = state.channels[f.room];
+      if (!ch) break;
+      if (f.truncated || ch.lastSeq === 0) ch.lastSeq = Math.max(ch.lastSeq, f.from - 1);
+      ch.joined = true;
+      if (f.members) updateMembers(f.members);
+      drainBuffer(f.room);
+      for (const p of state.pendingSends.values()) {
+        if (p.room === f.room) sendFrame({ t: 'msg', room: p.room, text: p.text, cid: p.cid });
+      }
+      break;
+    }
+
+    case 'msg':
+      handleIncomingMsg(f);
+      break;
+
+    case 'ack':
+      state.pendingSends.delete(f.cid);
+      break;
+
+    case 'presence':
+      if (f.state === 'join') {
+        if (!state.members.includes(f.user)) state.members.push(f.user);
+      } else {
+        state.members = state.members.filter((u) => u !== f.user);
+      }
+      renderMembers();
+      break;
+
+    case 'typing':
+      state.typingUsers[f.user] = Date.now() + 3000;
+      renderTyping();
+      break;
+
+    case 'reconnect':
+      state.ws && state.ws.close();
+      break;
+  }
+}
+
+function handleIncomingMsg(m) {
+  const ch = state.channels[m.room];
+  if (!ch || m.seq <= ch.lastSeq) return; // Deduplication
+  if (m.seq === ch.lastSeq + 1) {
+    ch.lastSeq = m.seq;
+    appendMessage(m);
+    drainBuffer(m.room);
+    return;
+  }
+  // Sequence Gap detected! Hold and resume
+  ch.held.set(m.seq, m);
+  if (ch.joined) {
+    ch.joined = false;
+    joinChannel(m.room);
+  }
+}
+
+function drainBuffer(room) {
+  const ch = state.channels[room];
+  while (ch.held.has(ch.lastSeq + 1)) {
+    const nextMsg = ch.held.get(ch.lastSeq + 1);
+    ch.held.delete(nextMsg.seq);
+    ch.lastSeq = nextMsg.seq;
+    appendMessage(nextMsg);
+  }
+}
+
+function appendMessage(m) {
+  const ch = state.channels[m.room];
+  if (!ch) return;
+  const time = new Date(m.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  ch.messages.push({ user: m.user, text: m.text, time, seq: m.seq });
+  if (m.room === state.currentChannel) {
+    renderMessages();
+  }
+  // Spawn animated packet particle in diagram
+  spawnPacketParticle(m.user.startsWith('sim') ? 'sim' : 'normal');
+}
+
+function renderMessages() {
+  const scroller = $('#messages-scroller');
+  scroller.innerHTML = '';
+  const ch = state.channels[state.currentChannel];
+  if (!ch || ch.messages.length === 0) {
+    scroller.innerHTML = `<div class="msg-sys">Welcome to #${state.currentChannel}! Send a message to test linearizable Redis streams.</div>`;
+    return;
+  }
+
+  for (const m of ch.messages) {
+    const card = document.createElement('div');
+    card.className = 'msg-card';
+    const isBot = m.user.startsWith('sim-bot');
+    const avatarColor = isBot ? '#23a55a' : (m.user === state.user ? '#5865f2' : '#9b59b6');
+
+    card.innerHTML = `
+      <div class="msg-avatar" style="background:${avatarColor}">${m.user.charAt(0).toUpperCase()}</div>
+      <div class="msg-content">
+        <div class="msg-meta">
+          <span class="msg-author">${escapeHtml(m.user)}</span>
+          <span class="msg-time">${m.time}</span>
+          <span class="seq-badge">seq #${m.seq}</span>
+        </div>
+        <div class="msg-text">${escapeHtml(m.text)}</div>
+      </div>
+    `;
+    scroller.appendChild(card);
+  }
+  scroller.scrollTop = scroller.scrollHeight;
+}
+
+function selectChannel(name) {
+  state.currentChannel = name;
+  $('#current-channel-name').textContent = name;
+  const descMap = {
+    'general': 'Main room with Redis linearizable total order',
+    'architecture': 'Discussions on L4 vs L7 load balancing & gap repair',
+    'production-alerts': 'Live failover and backplane alerts',
+    'simulation-feed': 'Real-time feed of virtual client load tests',
+  };
+  $('#current-channel-desc').textContent = descMap[name] || 'Channel feed';
+
+  document.querySelectorAll('.channel-item').forEach((el) => {
+    el.className = 'channel-item' + (el.textContent.includes(name) ? ' active' : '');
+  });
+  renderMessages();
+}
+
+function sendMessage() {
+  const input = $('#chat-input');
+  const text = input.value.trim();
+  if (!text) return;
+  const cid = crypto.randomUUID();
+  const p = { room: state.currentChannel, text, cid };
+  state.pendingSends.set(cid, p);
+
+  if (state.channels[state.currentChannel]?.joined) {
+    sendFrame({ t: 'msg', ...p });
+  }
+  input.value = '';
+}
+
+$('#chat-input').onkeydown = (e) => {
+  if (e.key === 'Enter') {
+    sendMessage();
+  } else {
+    sendFrame({ t: 'typing', room: state.currentChannel });
+  }
+};
+
+function updateMembers(list) {
+  state.members = Array.from(new Set([state.user, ...list])).sort();
+  renderMembers();
+}
+
+function renderMembers() {
+  const list = $('#members-list');
+  list.innerHTML = '';
+  $('#online-count').textContent = state.members.length;
+  for (const u of state.members) {
+    const row = document.createElement('div');
+    row.className = 'member-row' + (u === state.user ? ' active' : '');
+    const isBot = u.startsWith('sim-bot');
+    row.innerHTML = `<span style="color:${isBot ? 'var(--discord-green)' : 'var(--discord-blurple)'}">●</span> ${escapeHtml(u)}`;
+    list.appendChild(row);
+  }
+}
+
+function renderTyping() {
+  const now = Date.now();
+  const typers = Object.keys(state.typingUsers).filter((u) => state.typingUsers[u] > now && u !== state.user);
+  $('#typing-bar').textContent = typers.length ? `${typers.join(', ')} is typing...` : '';
+}
+setInterval(renderTyping, 1000);
+
+function simulateDrop() {
+  if (state.ws) {
+    state.ws.close();
+  }
+}
+
+/* ================= SIMULATION CONTROLS ================= */
+function updateSimInputs() {
+  const clients = $('#input-clients').value;
+  const rate = $('#input-rate').value;
+  $('#val-clients').textContent = clients;
+  $('#val-rate').textContent = `${rate} req/s`;
+  $('#node-stat-clients').textContent = `${clients} Virtual Users`;
+}
+
+async function toggleSimulation() {
+  if (state.simActive) {
+    await fetch('/api/simulation/stop', { method: 'POST' });
+    state.simActive = false;
+    $('#btn-toggle-sim').textContent = '▶ Start Simulation';
+    $('#btn-toggle-sim').className = 'btn-sim btn-sim-start';
+    $('#sim-live-badge').textContent = 'Status: Idle';
+    $('#sim-live-badge').style.color = 'var(--text-muted)';
+  } else {
+    const clients = Number($('#input-clients').value);
+    const ratePerSec = Number($('#input-rate').value);
+    const pattern = $('#select-pattern').value;
+
+    await fetch('/api/simulation/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ clients, ratePerSec, pattern }),
+    });
+    state.simActive = true;
+    $('#btn-toggle-sim').textContent = '⏹ Stop Simulation';
+    $('#btn-toggle-sim').className = 'btn-sim btn-sim-stop';
+    $('#sim-live-badge').textContent = `Status: Generating ${ratePerSec} req/s`;
+    $('#sim-live-badge').style.color = 'var(--discord-green)';
+  }
+}
+
+async function triggerSpike(count = 50) {
+  await fetch('/api/simulation/spike', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ count }),
+  });
+  for (let i = 0; i < 8; i++) {
+    setTimeout(() => spawnPacketParticle('spike'), i * 80);
+  }
+}
+
+/* ================= ARCHITECTURE DIAGRAM & PACKET ANIMATIONS ================= */
+function spawnPacketParticle(type = 'normal') {
+  const g = $('#packet-layer');
+  if (!g) return;
+
+  const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  circle.setAttribute('class', 'packet-dot');
+  circle.setAttribute('cx', '120');
+  circle.setAttribute('cy', '140');
+
+  if (type === 'spike') {
+    circle.setAttribute('fill', '#f0b232');
+    circle.style.filter = 'drop-shadow(0 0 6px #f0b232)';
+  } else if (type === 'error') {
+    circle.setAttribute('fill', '#f23f43');
+    circle.style.filter = 'drop-shadow(0 0 6px #f23f43)';
+  }
+
+  g.appendChild(circle);
+
+  // Animate through waypoints: Clients (120,140) -> APIGW (310,140) -> NLB (530,140) -> gw-1/2/3 -> Redis (940,140) -> AWS (1050,140)
+  const targetNodeY = [70, 140, 210][Math.floor(Math.random() * 3)];
+  const waypoints = [
+    { x: 120, y: 140 },
+    { x: 310, y: 140 },
+    { x: 530, y: 140 },
+    { x: 740, y: targetNodeY },
+    { x: 940, y: 140 },
+    { x: 1050, y: 140 },
+  ];
+
+  let step = 0;
+  const duration = 1200; // ms total
+  const stepTime = duration / (waypoints.length - 1);
+  const startAnim = performance.now();
+
+  function move(now) {
+    const elapsed = now - startAnim;
+    const progress = Math.min(1, elapsed / duration);
+    const seg = Math.min(waypoints.length - 2, Math.floor(progress * (waypoints.length - 1)));
+    const segProgress = (progress * (waypoints.length - 1)) - seg;
+
+    const p0 = waypoints[seg];
+    const p1 = waypoints[seg + 1];
+    const curX = p0.x + (p1.x - p0.x) * segProgress;
+    const curY = p0.y + (p1.y - p0.y) * segProgress;
+
+    circle.setAttribute('cx', curX);
+    circle.setAttribute('cy', curY);
+
+    if (progress < 1) {
+      requestAnimationFrame(move);
+    } else {
+      circle.remove();
+    }
+  }
+  requestAnimationFrame(move);
+}
+
+function inspectNode(id) {
+  const details = {
+    'clients': 'Client Fleet: WebSocket clients connecting with JWT auth tokens. Includes jittered exponential backoff and gap resume from lastSeq.',
+    'apigw': 'API Gateway / Ingress: Terminates TLS, validates HMAC-SHA256 tokens, isolates multi-tenant rooms, and enforces per-connection token bucket rate limits.',
+    'nlb': 'Network Load Balancer (NLB): Layer 4 TCP load balancer distributing active TCP connections across gateway instances using flow-hash. Monitored via active /readyz health checks.',
+    'gw1': 'Gateway Node (gw-1): Stateful WebSocket worker tracking local sockets and per-room sequence delivered. Fills gaps from Redis Stream if pub/sub drops packets.',
+    'gw2': 'Gateway Node (gw-2): Disposable gateway instance. If destroyed, connected clients reconnect to gw-1 or gw-3 and resume missing messages seamlessly.',
+    'gw3': 'Gateway Node (gw-3): Disposable gateway instance participating in cross-node message fanout.',
+    'redis': 'Redis Backplane: The linearization point of the entire cluster! Atomic Lua script runs: dedupe CID -> INCR seq -> XADD stream -> PUBLISH. Guarantees global total order.',
+    'cw': 'AWS CloudWatch: Ingests custom telemetry in real time using PutMetricData. Monitors RequestsPerSec, ActiveConnections, DeliveryLatency, and RateLimitedPackets.',
+  };
+  alert(details[id] || 'System Node');
+}
+
+/* ================= TELEMETRY POLLING ================= */
+async function fetchSystemState() {
+  try {
+    const [sysRes, tracesRes, servRes] = await Promise.all([
+      fetch('/api/system/status'),
+      fetch('/api/system/traces'),
+      fetch('/api/services/status'),
+    ]);
+
+    if (sysRes.ok) {
+      const data = await sysRes.json();
+      updateDashboard(data);
+    }
+
+    if (tracesRes.ok) {
+      const tracesData = await tracesRes.json();
+      updateTracesConsole(tracesData.traces);
+    }
+
+    if (servRes.ok) {
+      const servData = await servRes.json();
+      renderServicesGrid(servData.services);
+    }
+  } catch (err) {
+    console.warn('Telemetry poll error:', err);
+  }
+}
+
+function updateDashboard(data) {
+  // Update node badges in diagram
+  $('#node-stat-gw1').textContent = `Sockets: ${data.connections}`;
+  $('#node-stat-redis').textContent = `${data.backplane.toUpperCase()} (${data.backplaneUp ? 'UP' : 'DOWN'})`;
+
+  // Simulation stats
+  if (data.simulation) {
+    $('#sim-stat-sent').textContent = data.simulation.stats.totalSent;
+    $('#sim-stat-delivered').textContent = data.simulation.stats.totalDelivered;
+    $('#sim-stat-throttled').textContent = data.simulation.stats.totalThrottled;
+    $('#sim-stat-latency').textContent = `${data.simulation.stats.avgLatencyMs} ms`;
+  }
+
+  // CloudWatch Status Pill
+  const cw = data.cloudwatch;
+  const pill = $('#cw-pill');
+  const pillText = $('#cw-pill-text');
+
+  if (cw.awsConnected) {
+    pill.className = 'cw-status-pill';
+    pillText.textContent = `CloudWatch: AWS Live (${cw.region})`;
+    $('#node-stat-cw').textContent = 'Streaming';
+    $('#node-stat-cw').style.fill = '#23a55a';
+  } else {
+    pill.className = 'cw-status-pill standby';
+    pillText.textContent = 'CloudWatch: Standby';
+    $('#node-stat-cw').textContent = 'Standby';
+    $('#node-stat-cw').style.fill = '#f0b232';
+  }
+}
+
+function updateTracesConsole(traces) {
+  if (!traces || traces.length === 0) return;
+  const terminal = $('#traces-console');
+  terminal.innerHTML = '';
+
+  const recent = traces.slice(-8).reverse();
+  for (const tr of recent) {
+    const line = document.createElement('div');
+    line.className = 'log-line';
+    const timeStr = new Date(tr.timestamp).toLocaleTimeString();
+    const statusColor = tr.status === 'delivered' ? '#50fa7b' : (tr.status === 'rate_limited' ? '#f1fa8c' : '#ff5555');
+
+    line.innerHTML = `
+      <span class="log-ts">[${timeStr}]</span>
+      <span class="log-route">[${tr.client} → #${tr.room}]</span>
+      <span class="log-node">routed via ${tr.gatewayNode}</span>
+      <span style="color:${statusColor}">status=${tr.status}</span>
+      <span style="color:#8be9fd">latency=${tr.totalLatencyMs}ms</span>
+    `;
+    terminal.appendChild(line);
+  }
+}
+
+function renderServicesGrid(services) {
+  if (!services) return;
+  const grid = $('#services-grid-cards');
+  grid.innerHTML = '';
+
+  for (const s of services) {
+    const card = document.createElement('div');
+    card.className = `service-card ${s.status}`;
+    const isAws = s.type === 'AWS';
+
+    let kvHtml = '';
+    for (const [k, v] of Object.entries(s.metrics || {})) {
+      kvHtml += `<div class="service-kv"><span style="color:var(--text-muted)">${k}</span><span style="font-weight:600; color:#fff;">${v}</span></div>`;
+    }
+
+    card.innerHTML = `
+      <div class="service-name">
+        <span>${escapeHtml(s.name)}</span>
+        <span class="tier-tag ${isAws ? 'aws' : ''}">${escapeHtml(s.costTier)}</span>
+      </div>
+      <div class="service-desc">${escapeHtml(s.details)}</div>
+      ${kvHtml}
+    `;
+    grid.appendChild(card);
+  }
+}
+
+/* ================= AWS CLOUDWATCH MODAL ================= */
+function openCwModal() {
+  $('#cw-modal').className = 'open';
+}
+function closeCwModal() {
+  $('#cw-modal').className = '';
+}
+
+async function saveCwConfig() {
+  const accessKeyId = $('#modal-aws-key').value.trim();
+  const secretAccessKey = $('#modal-aws-secret').value.trim();
+  const sessionToken = $('#modal-aws-token').value.trim();
+  const region = $('#modal-aws-region').value.trim() || 'us-east-1';
+
+  if (!accessKeyId || !secretAccessKey) {
+    alert('Please enter your AWS Access Key ID and Secret Access Key.');
+    return;
+  }
+
+  const res = await fetch('/api/cloudwatch/config', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ accessKeyId, secretAccessKey, sessionToken, region }),
+  });
+
+  if (res.ok) {
+    closeCwModal();
+    testCwConnection();
+  } else {
+    alert('Failed to save AWS credentials.');
+  }
+}
+
+async function testCwConnection() {
+  try {
+    const res = await fetch('/api/cloudwatch/test', { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      alert(`✅ Success: ${data.message}`);
+    } else {
+      alert(`⚠️ AWS Test result:\n${data.message}\nError: ${data.error || 'Check permissions or expired session token'}`);
+    }
+  } catch (err) {
+    alert('Error testing connection: ' + err.message);
+  }
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+}
+
+/* Poll Telemetry every 1.5 seconds */
+setInterval(fetchSystemState, 1500);
+
+/* Start */
+initChat();
+fetchSystemState();
+</script>
+</body>
+</html>
