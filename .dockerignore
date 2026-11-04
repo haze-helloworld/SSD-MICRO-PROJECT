@@ -1,0 +1,14 @@
+node_modules
+dist
+.git
+.env
+.env.*
+bench
+docs
+infra
+tests
+*.pptx
+*.log
+.terraform
+*.tfstate*
+

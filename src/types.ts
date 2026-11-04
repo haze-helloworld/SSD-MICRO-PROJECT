@@ -44,4 +44,5 @@ export type ServerFrame =
 
 export type EventPayload =
   | { t: 'presence'; room: string; user: string; state: 'join' | 'leave'; from?: string }
-  | { t: 'typing'; room: string; user: string; from?: string };
+  | { t: 'typing'; room: string; user: string; from?: string }
+  | { t: 'aws_sync'; creds: any };

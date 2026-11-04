@@ -114,6 +114,8 @@ export class Gateway {
       this.indexHtml = null;
     }
     await this.bp.start();
+    // Subscribe to cluster-wide system event channel for cross-node AWS credential sync
+    await this.bp.subscribe({ tenant: 'system', room: 'global' }).catch(() => undefined);
     this.http = createServer((req, res) => void this.handleHttp(req, res));
     this.http.on('upgrade', (req, socket, head) => this.handleUpgrade(req, socket, head));
     await new Promise<void>((res) => this.http.listen(this.cfg.port, res));
@@ -300,6 +302,13 @@ export class Gateway {
         };
         const result = this.cw.configure(creds);
         this.aws.configure(creds);
+
+        // Broadcast to all other gateway replicas in the cluster via Redis
+        void this.bp.publishEvent({ tenant: 'system', room: 'global' }, {
+          t: 'aws_sync',
+          creds,
+        }).catch(() => undefined);
+
         return json(200, result);
       } catch (err: any) {
         return json(400, { error: err.message || 'Invalid configuration payload' });
@@ -657,6 +666,14 @@ export class Gateway {
   }
 
   private onBackplaneEvent(ref: RoomRef, ev: EventPayload) {
+    if (ev.t === 'aws_sync') {
+      if (ev.creds) {
+        this.cw.configure(ev.creds);
+        this.aws.configure(ev.creds);
+        this.log.info('synchronized AWS credentials from cluster broadcast');
+      }
+      return;
+    }
     const rs = this.rooms.get(refKey(ref));
     if (!rs) return;
     const frame = JSON.stringify(ev);
