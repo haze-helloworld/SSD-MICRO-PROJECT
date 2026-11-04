@@ -4,25 +4,33 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>SSD Micro Project · Discord Chat & Backstage Observability</title>
+<!-- Google Fonts for modern tech typography -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg-darkest: #111214;
-    --bg-side: #1e1f22;
-    --bg-subside: #2b2d31;
-    --bg-main: #313338;
+    --bg-darkest: #090a0c;
+    --bg-surface: #101114;
+    --bg-card: #15171c;
+    --bg-card-hover: #1c1e24;
+    --bg-side: #16181d;
+    --bg-subside: #1f2229;
+    --bg-main: #2b2d31;
     --bg-hover: #35373c;
-    --text-normal: #dbdee1;
-    --text-muted: #949ba4;
     --text-white: #ffffff;
+    --text-normal: #dcdee1;
+    --text-muted: #949aa4;
+    --text-dim: #686d77;
     --discord-blurple: #5865f2;
     --discord-blurple-hover: #4752c4;
     --discord-green: #23a55a;
     --discord-yellow: #f0b232;
     --discord-red: #f23f43;
-    --border: #383a40;
-    --card-bg: #1e1f24;
-    --card-border: #2b2d33;
-    --accent-glow: rgba(88, 101, 242, 0.45);
+    --aws-orange: #ff9900;
+    --border-subtle: rgba(255, 255, 255, 0.07);
+    --border-medium: rgba(255, 255, 255, 0.12);
+    --accent-glow: rgba(88, 101, 242, 0.35);
     --split-left: 50%;
   }
 
@@ -31,230 +39,217 @@
     height: 100vh;
     display: flex;
     flex-direction: column;
-    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background: var(--bg-darkest);
     color: var(--text-normal);
     overflow: hidden;
     user-select: none;
+    -webkit-font-smoothing: antialiased;
   }
 
   /* ================= TOP APP BAR ================= */
   #top-bar {
-    height: 48px;
-    background: #111214;
+    height: 46px;
+    background: #0d0e11;
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 0 16px;
-    border-bottom: 1px solid rgba(255,255,255,0.06);
+    border-bottom: 1px solid var(--border-subtle);
     z-index: 100;
     flex-shrink: 0;
   }
   .app-branding {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 9px;
   }
   .app-logo {
-    width: 28px;
-    height: 28px;
-    border-radius: 8px;
-    background: linear-gradient(135deg, #5865f2, #9b59b6);
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
+    background: linear-gradient(135deg, #5865f2, #9333ea);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 15px;
-    box-shadow: 0 0 10px var(--accent-glow);
+    font-size: 14px;
+    box-shadow: 0 2px 8px rgba(88, 101, 242, 0.3);
   }
   .app-title-text {
     font-weight: 700;
     font-size: 13.5px;
     color: var(--text-white);
-    letter-spacing: 0.3px;
+    letter-spacing: -0.2px;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 7px;
   }
   .badge-ssd {
-    background: rgba(88, 101, 242, 0.2);
-    color: #8590ff;
-    font-size: 10px;
-    padding: 2px 7px;
+    background: rgba(88, 101, 242, 0.15);
+    color: #939aff;
+    font-size: 9.5px;
+    padding: 2px 6px;
     border-radius: 4px;
     text-transform: uppercase;
-    font-weight: 800;
+    font-weight: 700;
     letter-spacing: 0.6px;
-    border: 1px solid rgba(88, 101, 242, 0.35);
+    border: 1px solid rgba(88, 101, 242, 0.25);
   }
 
-  /* Center Navigation Tabs */
+  /* Segmented Nav Tabs */
   .nav-tabs {
     display: flex;
-    gap: 4px;
-    background: #18191c;
+    gap: 2px;
+    background: #14161b;
     padding: 3px;
-    border-radius: 8px;
-    border: 1px solid rgba(255,255,255,0.04);
+    border-radius: 7px;
+    border: 1px solid var(--border-subtle);
   }
   .nav-tab {
-    padding: 6px 14px;
-    border-radius: 6px;
+    padding: 5px 13px;
+    border-radius: 5px;
     font-size: 12px;
     font-weight: 600;
     cursor: pointer;
     background: transparent;
     color: var(--text-muted);
     border: none;
-    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.14s ease;
     display: flex;
     align-items: center;
     gap: 6px;
   }
-  .nav-tab:hover { color: var(--text-white); background: rgba(255,255,255,0.05); }
+  .nav-tab:hover { color: var(--text-white); background: rgba(255,255,255,0.04); }
   .nav-tab.active {
     background: var(--discord-blurple);
     color: #fff;
     box-shadow: 0 2px 8px var(--accent-glow);
   }
 
-  /* Split Ratio Selector (Visible only in Split Mode) */
+  /* Split Ratio Selector */
   #split-ratio-controls {
     display: none;
     align-items: center;
-    gap: 4px;
+    gap: 2px;
     margin-left: 8px;
-    background: #18191c;
+    background: #14161b;
     padding: 2px;
     border-radius: 6px;
-    border: 1px solid rgba(255,255,255,0.04);
+    border: 1px solid var(--border-subtle);
   }
   .split-ratio-btn {
     background: transparent;
     border: none;
     color: var(--text-muted);
-    font-size: 10px;
-    font-weight: 700;
+    font-size: 10.5px;
+    font-weight: 600;
     padding: 4px 7px;
     border-radius: 4px;
     cursor: pointer;
-    transition: 0.12s;
+    transition: 0.1s;
   }
-  .split-ratio-btn:hover { color: #fff; background: rgba(255,255,255,0.08); }
-  .split-ratio-btn.active { background: #2f3136; color: #58a6ff; }
+  .split-ratio-btn:hover { color: #fff; background: rgba(255,255,255,0.06); }
+  .split-ratio-btn.active { background: #232630; color: #58a6ff; font-weight: 700; }
 
-  /* Right Action Pills */
+  /* CloudWatch Live Status Pill */
   .header-actions {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
   }
   .cw-status-pill {
     font-size: 11px;
     padding: 5px 12px;
     border-radius: 20px;
-    background: rgba(35, 165, 90, 0.15);
+    background: rgba(35, 165, 90, 0.12);
     color: var(--discord-green);
-    border: 1px solid rgba(35, 165, 90, 0.35);
+    border: 1px solid rgba(35, 165, 90, 0.3);
     cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 7px;
+    gap: 6px;
     font-weight: 600;
-    transition: all 0.2s;
+    transition: all 0.15s ease;
   }
   .cw-status-pill:hover {
+    background: rgba(35, 165, 90, 0.2);
     transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(35, 165, 90, 0.2);
   }
   .cw-status-pill.standby {
-    background: rgba(240, 178, 50, 0.12);
+    background: rgba(240, 178, 50, 0.1);
     color: var(--discord-yellow);
-    border-color: rgba(240, 178, 50, 0.35);
+    border-color: rgba(240, 178, 50, 0.3);
   }
+  .cw-status-pill.standby:hover { background: rgba(240, 178, 50, 0.18); }
   .live-dot {
-    width: 7px;
-    height: 7px;
+    width: 6.5px;
+    height: 6.5px;
     border-radius: 50%;
     background: currentColor;
     display: inline-block;
     box-shadow: 0 0 6px currentColor;
     animation: pulse 1.8s infinite;
   }
-  @keyframes pulse { 0% { opacity: 0.4; } 50% { opacity: 1; } 100% { opacity: 0.4; } }
+  @keyframes pulse { 0% { opacity: 0.35; } 50% { opacity: 1; } 100% { opacity: 0.35; } }
 
-  /* ================= VIEW WRAPPER & SPLIT SCREEN ================= */
+  /* ================= VIEW WRAPPER ================= */
   #views-wrapper {
     flex: 1;
     display: flex;
     overflow: hidden;
     position: relative;
     width: 100%;
-    height: calc(100vh - 48px);
+    height: calc(100vh - 46px);
   }
   .view-pane {
     height: 100%;
     overflow: hidden;
     display: none;
     position: relative;
-    width: 100%;
-    flex: 1 1 100%;
     min-width: 0;
   }
   .view-pane.active {
     display: flex;
-    flex: 1;
+    width: 100% !important;
+    flex: 1 1 100% !important;
+  }
+
+  #views-wrapper:not(.split-mode) #chat-view.active {
     display: flex !important;
     width: 100% !important;
     flex: 1 1 100% !important;
-    min-width: 0 !important;
   }
-
-  /* Full Width View Panes (when either single tab is selected) */
-  #views-wrapper:not(.split-mode) #chat-view {
+  #views-wrapper:not(.split-mode) #backstage-view.active {
+    display: flex !important;
     width: 100% !important;
     flex: 1 1 100% !important;
-    max-width: 100% !important;
-    min-width: 0 !important;
-  }
-  #views-wrapper:not(.split-mode) #backstage-view {
-    width: 100% !important;
-    flex: 1 1 100% !important;
-    max-width: 100% !important;
-    min-width: 0 !important;
   }
 
   /* Split Mode Layout */
   .split-mode #chat-view {
     display: flex !important;
-    width: var(--split-left);
-    flex-shrink: 0;
-    flex-grow: 0;
     width: var(--split-left) !important;
     flex: 0 0 var(--split-left) !important;
     max-width: var(--split-left) !important;
-    border-right: none;
   }
   .split-mode #backstage-view {
     display: flex !important;
-    flex: 1;
-    min-width: 0;
     flex: 1 1 0% !important;
     width: auto !important;
     max-width: none !important;
-    min-width: 0 !important;
   }
 
-  /* Split Screen Drag Divider */
+  /* Draggable Split Divider */
   #split-divider {
     display: none;
-    width: 8px;
-    background: #18191c;
+    width: 7px;
+    background: #111317;
     cursor: col-resize;
     position: relative;
     z-index: 50;
     transition: background 0.15s;
-    border-left: 1px solid rgba(255,255,255,0.06);
-    border-right: 1px solid rgba(255,255,255,0.06);
+    border-left: 1px solid var(--border-subtle);
+    border-right: 1px solid var(--border-subtle);
   }
   .split-mode #split-divider {
     display: flex;
@@ -263,47 +258,42 @@
   }
   #split-divider:hover, #split-divider.dragging {
     background: var(--discord-blurple);
-    box-shadow: 0 0 12px var(--accent-glow);
+    box-shadow: 0 0 10px var(--accent-glow);
   }
   .divider-handle {
-    width: 4px;
-    height: 32px;
-    border-radius: 2px;
-    background: #4e5058;
+    width: 3px;
+    height: 28px;
+    border-radius: 1.5px;
+    background: #414550;
     pointer-events: none;
   }
   #split-divider:hover .divider-handle, #split-divider.dragging .divider-handle {
     background: #fff;
   }
 
-  /* PANE SUB-HEADER (Highlights perspective in Split Mode) */
+  /* Slim Breadcrumb Header (Split Mode only) */
   .pane-header-strip {
     display: none;
-    height: 32px;
-    background: #1a1b1e;
-    border-bottom: 1px solid rgba(255,255,255,0.06);
+    height: 26px;
+    background: #121317;
+    border-bottom: 1px solid var(--border-subtle);
     padding: 0 12px;
     align-items: center;
     justify-content: space-between;
     font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.4px;
-    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0.2px;
     color: var(--text-muted);
     flex-shrink: 0;
   }
-  .split-mode .pane-header-strip {
-    display: flex;
-  }
-  .pane-badge-left { color: #8590ff; display: flex; align-items: center; gap: 6px; }
-  .pane-badge-right { color: #50fa7b; display: flex; align-items: center; gap: 6px; }
+  .split-mode .pane-header-strip { display: flex; }
+  .pane-badge-left { color: #8590ff; display: flex; align-items: center; gap: 5px; }
+  .pane-badge-right { color: #4ade80; display: flex; align-items: center; gap: 5px; }
 
   /* ================= 1. DISCORD CHAT VIEW ================= */
   #chat-view {
     flex-direction: column;
     background: var(--bg-main);
-    width: 100%;
-    min-width: 0;
   }
   .chat-layout-body {
     flex: 1;
@@ -314,46 +304,46 @@
 
   /* Guild Server Rail */
   #guilds-rail {
-    width: 60px;
+    width: 54px;
     background: var(--bg-darkest);
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 12px 0;
+    padding: 10px 0;
     gap: 8px;
-    border-right: 1px solid rgba(0,0,0,0.25);
+    border-right: 1px solid var(--border-subtle);
     flex-shrink: 0;
   }
   .guild-icon {
-    width: 42px;
-    height: 42px;
-    border-radius: 21px;
-    background: var(--bg-subside);
+    width: 38px;
+    height: 38px;
+    border-radius: 19px;
+    background: #1e2026;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.18s ease;
     font-weight: 700;
-    font-size: 14px;
+    font-size: 12px;
     color: var(--text-normal);
   }
   .guild-icon:hover, .guild-icon.active {
     border-radius: 12px;
     background: var(--discord-blurple);
     color: #fff;
-    box-shadow: 0 2px 8px var(--accent-glow);
+    box-shadow: 0 3px 10px var(--accent-glow);
   }
 
   /* Channels Sidebar */
   #channels-side {
-    width: 200px;
+    width: 185px;
     background: var(--bg-side);
     display: flex;
     flex-direction: column;
-    border-right: 1px solid rgba(0,0,0,0.15);
+    border-right: 1px solid var(--border-subtle);
     flex-shrink: 0;
-    transition: width 0.2s ease, opacity 0.2s ease;
+    transition: width 0.16s ease, opacity 0.16s ease;
   }
   #channels-side.collapsed {
     width: 0;
@@ -362,31 +352,31 @@
     border-right: none;
   }
   .server-title-bar {
-    height: 48px;
+    height: 44px;
     padding: 0 14px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     font-weight: 700;
     color: var(--text-white);
-    border-bottom: 1px solid rgba(0,0,0,0.2);
-    font-size: 13.5px;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    border-bottom: 1px solid var(--border-subtle);
+    font-size: 13px;
+    letter-spacing: -0.1px;
   }
   .channels-list {
     flex: 1;
-    padding: 10px 8px;
+    padding: 8px 6px;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
     gap: 2px;
   }
   .channel-category-label {
-    font-size: 10.5px;
-    font-weight: 800;
+    font-size: 10px;
+    font-weight: 700;
     text-transform: uppercase;
-    color: var(--text-muted);
-    padding: 8px 8px 4px;
+    color: var(--text-dim);
+    padding: 7px 8px 3px;
     letter-spacing: 0.5px;
   }
   .channel-item {
@@ -398,31 +388,24 @@
     color: var(--text-muted);
     font-size: 13px;
     cursor: pointer;
-    transition: 0.12s;
+    transition: all 0.12s;
   }
-  .channel-item:hover {
-    background: var(--bg-hover);
-    color: var(--text-normal);
-  }
-  .channel-item.active {
-    background: var(--bg-hover);
-    color: var(--text-white);
-    font-weight: 600;
-  }
+  .channel-item:hover { background: var(--bg-hover); color: var(--text-normal); }
+  .channel-item.active { background: var(--bg-hover); color: var(--text-white); font-weight: 600; }
 
   /* Current User Status Footer */
   .current-user-box {
-    height: 50px;
-    background: #232428;
+    height: 46px;
+    background: #14161b;
     padding: 0 10px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    border-top: 1px solid rgba(0,0,0,0.15);
+    border-top: 1px solid var(--border-subtle);
   }
   .user-avatar-badge {
-    width: 32px;
-    height: 32px;
+    width: 30px;
+    height: 30px;
     border-radius: 50%;
     background: var(--discord-blurple);
     display: flex;
@@ -435,14 +418,14 @@
     flex-shrink: 0;
   }
   .user-status-dot {
-    width: 9px;
-    height: 9px;
+    width: 8.5px;
+    height: 8.5px;
     border-radius: 50%;
     background: var(--discord-green);
     position: absolute;
     bottom: -1px;
     right: -1px;
-    border: 2px solid #232428;
+    border: 2px solid #14161b;
   }
 
   /* Chat Main Area */
@@ -454,13 +437,12 @@
     min-width: 0;
   }
   .chat-toolbar {
-    height: 48px;
-    padding: 0 16px;
+    height: 44px;
+    padding: 0 14px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    border-bottom: 1px solid rgba(0,0,0,0.2);
-    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    border-bottom: 1px solid var(--border-subtle);
     flex-shrink: 0;
   }
   .chat-channel-info {
@@ -472,13 +454,13 @@
   .chat-channel-name {
     font-weight: 700;
     color: var(--text-white);
-    font-size: 14.5px;
+    font-size: 14px;
     white-space: nowrap;
   }
   .chat-channel-desc {
     color: var(--text-muted);
     font-size: 11.5px;
-    border-left: 1px solid var(--border);
+    border-left: 1px solid var(--border-subtle);
     padding-left: 8px;
     white-space: nowrap;
     overflow: hidden;
@@ -487,65 +469,58 @@
   .chat-actions-right {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     flex-shrink: 0;
   }
   .icon-tool-btn {
     background: transparent;
-    border: 1px solid rgba(255,255,255,0.08);
+    border: 1px solid var(--border-subtle);
     color: var(--text-muted);
     padding: 5px 9px;
     border-radius: 5px;
-    font-size: 11px;
+    font-size: 11.5px;
     font-weight: 600;
     cursor: pointer;
-    transition: 0.12s;
+    transition: all 0.12s;
     display: flex;
     align-items: center;
     gap: 5px;
   }
-  .icon-tool-btn:hover {
-    background: rgba(255,255,255,0.06);
-    color: var(--text-white);
-  }
+  .icon-tool-btn:hover { background: rgba(255,255,255,0.06); color: var(--text-white); }
   .chaos-drop-btn {
     background: rgba(242, 63, 67, 0.12);
-    border: 1px solid rgba(242, 63, 67, 0.4);
+    border: 1px solid rgba(242, 63, 67, 0.35);
     color: #ff8588;
     padding: 5px 10px;
     border-radius: 5px;
-    font-size: 11px;
+    font-size: 11.5px;
     font-weight: 600;
     cursor: pointer;
-    transition: 0.12s;
+    transition: all 0.12s;
   }
-  .chaos-drop-btn:hover {
-    background: var(--discord-red);
-    color: #fff;
-  }
+  .chaos-drop-btn:hover { background: var(--discord-red); color: #fff; }
 
-  /* Chat Message Feed */
+  /* Message Scroller */
   #messages-scroller {
     flex: 1;
     overflow-y: auto;
-    padding: 14px 16px;
+    padding: 12px 14px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    scroll-behavior: smooth;
+    gap: 8px;
   }
   .msg-card {
     display: flex;
-    gap: 12px;
+    gap: 11px;
     padding: 4px 6px;
-    border-radius: 6px;
+    border-radius: 5px;
     transition: background 0.1s;
     user-select: text;
   }
   .msg-card:hover { background: rgba(0,0,0,0.12); }
   .msg-avatar {
-    width: 36px;
-    height: 36px;
+    width: 34px;
+    height: 34px;
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -554,40 +529,39 @@
     color: #fff;
     font-size: 13px;
     flex-shrink: 0;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
   }
   .msg-content { flex: 1; min-width: 0; }
   .msg-meta {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 7px;
     margin-bottom: 2px;
   }
-  .msg-author { font-weight: 600; color: var(--text-white); font-size: 13.5px; }
-  .msg-time { font-size: 10.5px; color: var(--text-muted); }
+  .msg-author { font-weight: 600; color: var(--text-white); font-size: 13px; }
+  .msg-time { font-size: 10.5px; color: var(--text-dim); }
   .seq-badge {
-    font-size: 10px;
+    font-size: 9.5px;
     padding: 1px 5px;
-    border-radius: 4px;
-    background: #1f2024;
+    border-radius: 3px;
+    background: #1b1d24;
     color: #58a6ff;
-    font-family: monospace;
-    font-weight: 700;
-    border: 1px solid #30363d;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    border: 1px solid #2d313d;
   }
   .msg-text { font-size: 13.5px; line-height: 1.4; word-break: break-word; color: var(--text-normal); }
   .msg-sys { font-style: italic; color: var(--text-muted); font-size: 11.5px; padding: 2px 0; }
 
-  /* Chat Message Input Bar */
+  /* Chat Input Area */
   .chat-input-area {
-    padding: 0 14px 14px;
+    padding: 0 12px 12px;
     flex-shrink: 0;
   }
   .typing-status {
-    height: 18px;
+    height: 16px;
     font-size: 11px;
     color: var(--text-muted);
-    padding-left: 4px;
+    padding-left: 2px;
   }
   .input-wrapper {
     background: #383a40;
@@ -596,7 +570,6 @@
     align-items: center;
     padding: 4px 10px;
     gap: 8px;
-    box-shadow: inset 0 1px 2px rgba(0,0,0,0.25);
   }
   .input-wrapper input {
     flex: 1;
@@ -604,7 +577,7 @@
     border: none;
     color: var(--text-white);
     font-size: 13.5px;
-    padding: 8px 2px;
+    padding: 7px 2px;
     outline: none;
     user-select: text;
   }
@@ -617,22 +590,22 @@
     font-weight: 600;
     font-size: 12px;
     cursor: pointer;
-    transition: 0.12s;
+    transition: all 0.12s;
   }
   .send-btn:hover { background: var(--discord-blurple-hover); }
 
-  /* Members Sidebar (Collapsible in Split Mode) */
+  /* Members Sidebar */
   #members-side {
-    width: 170px;
+    width: 160px;
     background: var(--bg-side);
-    padding: 14px 10px;
+    padding: 12px 10px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
     overflow-y: auto;
-    border-left: 1px solid rgba(0,0,0,0.15);
+    border-left: 1px solid var(--border-subtle);
     flex-shrink: 0;
-    transition: width 0.2s ease, opacity 0.2s ease;
+    transition: width 0.16s ease, opacity 0.16s ease;
   }
   #members-side.collapsed {
     width: 0;
@@ -642,10 +615,10 @@
     border-left: none;
   }
   .members-category {
-    font-size: 10.5px;
-    font-weight: 800;
+    font-size: 10px;
+    font-weight: 700;
     text-transform: uppercase;
-    color: var(--text-muted);
+    color: var(--text-dim);
   }
   .member-row {
     display: flex;
@@ -661,28 +634,21 @@
   /* ================= 2. BACKSTAGE OBSERVABILITY VIEW ================= */
   #backstage-view {
     flex-direction: column;
-    background: #141517;
+    background: var(--bg-surface);
     overflow-y: auto;
     scrollbar-gutter: stable;
     width: 100%;
     min-width: 0;
   }
   .backstage-container {
-    padding: 16px 20px;
+    padding: 12px 16px;
     display: flex;
     flex-direction: column;
-    gap: 16px;
-    max-width: 1600px;
+    gap: 12px;
     max-width: 100%;
     margin: 0 auto;
     width: 100%;
     box-sizing: border-box;
-  }
-
-  /* Compact View Adjustments in Split Screen */
-  .split-mode .backstage-container {
-    padding: 12px 14px;
-    gap: 12px;
   }
 
   .backstage-header-box {
@@ -690,34 +656,33 @@
     align-items: center;
     justify-content: space-between;
     flex-wrap: wrap;
-    gap: 10px;
-  }
-  .b-title {
-    font-size: 18px;
-    font-weight: 800;
-    color: #fff;
-    display: flex;
-    align-items: center;
     gap: 8px;
   }
-  .b-subtitle {
-    color: var(--text-muted);
-    font-size: 11.5px;
-    margin-top: 2px;
+  .b-title {
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--text-white);
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    letter-spacing: -0.2px;
+  }
+  .b-actions {
+    display: flex;
+    gap: 7px;
   }
 
-  /* CARDS */
+  /* Cards */
   .dash-card {
-    background: var(--card-bg);
-    border: 1px solid var(--card-border);
-    border-radius: 10px;
-    padding: 15px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 9px;
+    padding: 12px 14px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+    gap: 10px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.25);
   }
-  .split-mode .dash-card { padding: 12px; gap: 10px; }
   .card-top {
     display: flex;
     align-items: center;
@@ -726,55 +691,58 @@
     gap: 6px;
   }
   .card-label {
-    font-size: 13.5px;
+    font-size: 13px;
     font-weight: 700;
-    color: #fff;
+    color: var(--text-white);
     display: flex;
     align-items: center;
     gap: 7px;
   }
-  .card-subtext { font-size: 11px; color: var(--text-muted); }
 
-  /* ARCHITECTURE DIAGRAM SVG AREA */
+  /* Topology Diagram Canvas */
   .diagram-container {
     position: relative;
-    background: #0f1012;
+    background: #0b0c0f;
     border-radius: 8px;
-    border: 1px solid #23252a;
+    border: 1px solid var(--border-subtle);
     overflow: hidden;
-    padding: 8px 4px;
+    padding: 6px;
   }
   #flow-svg {
     width: 100%;
     height: auto;
-    max-height: 250px;
+    max-height: 220px;
     display: block;
   }
+
+  /* SVG Node Styling */
   .node-rect {
-    fill: #1c1d22;
-    stroke: #383a42;
-    stroke-width: 2;
+    fill: #161820;
+    stroke: #2e323e;
+    stroke-width: 1.5;
     rx: 8;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.18s ease;
   }
   .node-rect:hover {
     stroke: var(--discord-blurple);
-    fill: #262830;
+    fill: #1d202b;
     filter: drop-shadow(0 0 10px var(--accent-glow));
   }
-  .node-title { fill: #fff; font-size: 11.5px; font-weight: 700; font-family: inherit; }
-  .node-sub { fill: #8b929e; font-size: 9.5px; font-family: inherit; }
-  .node-stat { fill: #58a6ff; font-size: 10.5px; font-weight: 600; font-family: monospace; }
+  .node-title { fill: #ffffff; font-size: 11.5px; font-weight: 700; font-family: 'Inter', sans-serif; }
+  .node-sub { fill: #828896; font-size: 9.5px; font-family: 'Inter', sans-serif; }
+  .node-stat { fill: #58a6ff; font-size: 10.5px; font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+
+  /* Conduits */
   .pipe-path {
     fill: none;
-    stroke: #2e313a;
-    stroke-width: 3;
+    stroke: #252833;
+    stroke-width: 2.5;
     stroke-dasharray: 4, 4;
   }
   .pipe-path.active {
     stroke: #5865f2;
-    animation: dash 0.9s linear infinite;
+    animation: dash 0.85s linear infinite;
   }
   @keyframes dash { to { stroke-dashoffset: -16; } }
   .packet-dot {
@@ -783,17 +751,36 @@
     filter: drop-shadow(0 0 5px #23a55a);
   }
 
-  /* SIMULATION CONTROLS */
-  .sim-panel {
+  /* Simulation & Metrics Grid */
+  .sim-metrics-layout {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-template-columns: 1.25fr 1fr;
     gap: 12px;
-    background: #17181c;
-    border: 1px solid #25262c;
-    padding: 14px;
-    border-radius: 8px;
   }
-  .control-group { display: flex; flex-direction: column; gap: 5px; }
+  @media (max-width: 900px) {
+    .sim-metrics-layout { grid-template-columns: 1fr; }
+  }
+
+  .sim-controls-strip {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    background: #111216;
+    padding: 11px;
+    border-radius: 7px;
+    border: 1px solid var(--border-subtle);
+  }
+  .sim-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+  .control-group {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
   .control-label {
     font-size: 11.5px;
     font-weight: 600;
@@ -801,113 +788,140 @@
     display: flex;
     justify-content: space-between;
   }
-  .control-val { color: var(--discord-blurple); font-weight: 700; font-family: monospace; }
-  .sim-slider { width: 100%; accent-color: var(--discord-blurple); cursor: pointer; }
+  .control-val { color: var(--discord-blurple); font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+  .sim-slider { width: 100%; accent-color: var(--discord-blurple); cursor: pointer; height: 5px; }
   .sim-select {
-    background: #23252a;
-    border: 1px solid #383a42;
+    background: #191b22;
+    border: 1px solid var(--border-medium);
     color: #fff;
     padding: 6px 8px;
     border-radius: 5px;
     font-size: 11.5px;
     outline: none;
+    font-family: inherit;
   }
-  .sim-btn-row { display: flex; gap: 8px; align-items: flex-end; }
+
   .btn-sim {
-    padding: 7px 14px;
-    border-radius: 6px;
+    padding: 6px 13px;
+    border-radius: 5px;
     font-size: 12px;
-    font-weight: 700;
+    font-weight: 600;
     border: none;
     cursor: pointer;
-    transition: 0.15s;
+    transition: all 0.12s ease;
     display: flex;
     align-items: center;
     gap: 5px;
     white-space: nowrap;
+    font-family: inherit;
   }
   .btn-sim-start { background: var(--discord-green); color: #fff; }
-  .btn-sim-start:hover { filter: brightness(1.1); }
+  .btn-sim-start:hover { filter: brightness(1.1); transform: translateY(-1px); }
   .btn-sim-stop { background: var(--discord-red); color: #fff; }
-  .btn-sim-spike { background: #f0b232; color: #111; }
-  .btn-sim-spike:hover { filter: brightness(1.08); }
+  .btn-sim-spike { background: #f0b232; color: #111; font-weight: 700; }
+  .btn-sim-spike:hover { filter: brightness(1.08); transform: translateY(-1px); }
+  .btn-sim-secondary { background: #20232c; color: #dbdee1; border: 1px solid var(--border-subtle); }
+  .btn-sim-secondary:hover { background: #2a2e3a; color: #fff; }
 
-  /* STAT TILES */
+  /* KPI Stat Tiles */
   .stats-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 10px;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
   }
   .stat-tile {
-    background: #17181c;
-    border: 1px solid #25262c;
-    padding: 10px 12px;
-    border-radius: 8px;
+    background: #111216;
+    border: 1px solid var(--border-subtle);
+    padding: 9px 12px;
+    border-radius: 7px;
     display: flex;
     flex-direction: column;
-    gap: 3px;
+    justify-content: center;
+    gap: 2px;
   }
-  .stat-title { font-size: 10.5px; color: var(--text-muted); font-weight: 700; text-transform: uppercase; }
-  .stat-number { font-size: 20px; font-weight: 800; color: #fff; font-family: monospace; }
+  .stat-title { font-size: 10px; color: var(--text-dim); font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; }
+  .stat-number { font-size: 19px; font-weight: 800; color: #fff; font-family: 'JetBrains Mono', monospace; }
   .stat-extra { font-size: 10px; color: var(--discord-green); }
 
-  /* SERVICES GRID */
-  .services-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 12px;
-  }
-  .service-card {
-    background: #17181c;
-    border: 1px solid #25262c;
-    border-radius: 8px;
-    padding: 12px;
+  /* Sub-Section Tab Controls */
+  .sub-tabs-bar {
     display: flex;
-    flex-direction: column;
-    gap: 6px;
-    border-left: 3px solid var(--discord-green);
+    gap: 5px;
+    border-bottom: 1px solid var(--border-subtle);
+    padding-bottom: 7px;
   }
-  .service-card.standby { border-left-color: var(--discord-yellow); }
-  .service-card.unhealthy { border-left-color: var(--discord-red); }
-  .service-name {
-    font-size: 12.5px;
-    font-weight: 700;
-    color: #fff;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+  .sub-tab-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 11.5px;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.12s;
+    font-family: inherit;
   }
-  .tier-tag { font-size: 9.5px; padding: 2px 5px; border-radius: 3px; background: #26282e; color: #9da5b4; }
-  .tier-tag.aws { background: rgba(255, 153, 0, 0.2); color: #ff9900; font-weight: 700; }
-  .service-desc { font-size: 10.5px; color: var(--text-muted); line-height: 1.3; }
-  .service-kv { display: flex; justify-content: space-between; font-size: 10.5px; border-top: 1px solid #222429; padding-top: 5px; }
+  .sub-tab-btn:hover { color: #fff; background: rgba(255,255,255,0.05); }
+  .sub-tab-btn.active { background: #222630; color: #58a6ff; font-weight: 700; }
 
-  /* TERMINAL CONSOLE */
+  /* Live Trace Terminal */
   .logs-terminal {
-    background: #0c0d0f;
-    border: 1px solid #1f2025;
-    border-radius: 6px;
+    background: #090a0d;
+    border: 1px solid var(--border-subtle);
+    border-radius: 7px;
     padding: 8px 12px;
-    height: 130px;
+    height: 125px;
     overflow-y: auto;
-    font-family: 'Consolas', 'Courier New', monospace;
+    font-family: 'JetBrains Mono', monospace;
     font-size: 10.5px;
     color: #a9b7c6;
     display: flex;
     flex-direction: column;
     gap: 3px;
   }
-  .log-line { display: flex; gap: 8px; }
+  .log-line { display: flex; gap: 7px; }
   .log-ts { color: #6272a4; }
   .log-route { color: #50fa7b; }
   .log-node { color: #bd93f9; }
 
-  /* MODAL */
+  /* Services Grid */
+  .services-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 9px;
+  }
+  .service-card {
+    background: #111216;
+    border: 1px solid var(--border-subtle);
+    border-radius: 7px;
+    padding: 9px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    border-left: 3px solid var(--discord-green);
+  }
+  .service-card.standby { border-left-color: var(--discord-yellow); }
+  .service-card.unhealthy { border-left-color: var(--discord-red); }
+  .service-name {
+    font-size: 12px;
+    font-weight: 700;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .tier-tag { font-size: 9.5px; padding: 2px 5px; border-radius: 3px; background: #21242d; color: #9da5b4; }
+  .tier-tag.aws { background: rgba(255, 153, 0, 0.18); color: #ff9900; font-weight: 700; }
+  .service-desc { font-size: 10.5px; color: var(--text-muted); line-height: 1.3; }
+  .service-kv { display: flex; justify-content: space-between; font-size: 10.5px; border-top: 1px solid #1c1e26; padding-top: 4px; }
+
+  /* AWS Credentials Modal */
   #cw-modal {
     display: none;
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,0.75);
+    background: rgba(0,0,0,0.72);
     backdrop-filter: blur(4px);
     z-index: 1000;
     align-items: center;
@@ -915,39 +929,41 @@
   }
   #cw-modal.open { display: flex; }
   .modal-box {
-    background: #1e1f24;
-    border: 1px solid #333640;
-    border-radius: 12px;
-    width: 500px;
-    max-width: 90vw;
-    padding: 22px;
+    background: #171920;
+    border: 1px solid var(--border-medium);
+    border-radius: 11px;
+    width: 480px;
+    max-width: 92vw;
+    padding: 20px;
     display: flex;
     flex-direction: column;
-    gap: 14px;
-    box-shadow: 0 12px 36px rgba(0,0,0,0.6);
+    gap: 13px;
+    box-shadow: 0 14px 40px rgba(0,0,0,0.65);
   }
-  .modal-title { font-size: 16px; font-weight: 800; color: #fff; display: flex; align-items: center; gap: 8px; }
+  .modal-title { font-size: 16px; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 7px; }
   .modal-desc { font-size: 11.5px; color: var(--text-muted); line-height: 1.4; }
-  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .form-group { display: flex; flex-direction: column; gap: 4px; }
   .form-label { font-size: 10.5px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); }
   .form-input, .form-textarea {
-    background: #141518;
-    border: 1px solid #343740;
+    background: #0f1014;
+    border: 1px solid var(--border-subtle);
     color: #fff;
     padding: 7px 10px;
     border-radius: 5px;
     font-size: 11.5px;
-    font-family: monospace;
+    font-family: 'JetBrains Mono', monospace;
     outline: none;
   }
-  .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 4px; }
-  .btn-outline { background: transparent; border: 1px solid #444752; color: var(--text-normal); padding: 7px 14px; border-radius: 5px; cursor: pointer; font-size: 12px; }
-  .btn-accent { background: var(--discord-blurple); border: none; color: #fff; padding: 7px 16px; border-radius: 5px; cursor: pointer; font-weight: 700; font-size: 12px; }
+  .form-input:focus, .form-textarea:focus { border-color: var(--discord-blurple); }
+  .modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+  .btn-outline { background: transparent; border: 1px solid #444752; color: var(--text-normal); padding: 7px 14px; border-radius: 5px; cursor: pointer; font-size: 12px; font-family: inherit; }
+  .btn-accent { background: var(--discord-blurple); border: none; color: #fff; padding: 7px 16px; border-radius: 5px; cursor: pointer; font-weight: 600; font-size: 12px; font-family: inherit; }
+  .btn-accent:hover { background: var(--discord-blurple-hover); }
 </style>
 </head>
 <body>
 
-<!-- TOP APP HEADER -->
+<!-- TOP APP BAR -->
 <header id="top-bar">
   <div class="app-branding">
     <div class="app-logo">💬</div>
@@ -971,16 +987,16 @@
       </button>
     </div>
 
-    <!-- Quick Ratio Buttons (Visible in Split Mode) -->
+    <!-- Quick Ratio Buttons -->
     <div id="split-ratio-controls">
-      <button class="split-ratio-btn" onclick="setSplitRatio(38)" title="38% Chat / 62% Backstage">38 / 62</button>
-      <button class="split-ratio-btn active" id="btn-ratio-50" onclick="setSplitRatio(50)" title="Balanced 50/50">50 / 50</button>
-      <button class="split-ratio-btn" onclick="setSplitRatio(62)" title="62% Chat / 38% Backstage">62 / 38</button>
+      <button class="split-ratio-btn" onclick="setSplitRatio(38)" title="38% Chat / 62% Backstage">38:62</button>
+      <button class="split-ratio-btn active" id="btn-ratio-50" onclick="setSplitRatio(50)" title="Balanced 50/50">50:50</button>
+      <button class="split-ratio-btn" onclick="setSplitRatio(62)" title="62% Chat / 38% Backstage">62:38</button>
     </div>
   </div>
 
   <div class="header-actions">
-    <div class="cw-status-pill standby" id="cw-pill" onclick="openCwModal()" title="Click to configure AWS Learner Lab Credentials">
+    <div class="cw-status-pill standby" id="cw-pill" onclick="openCwModal()" title="Configure AWS Learner Lab Credentials">
       <span class="live-dot"></span>
       <span id="cw-pill-text">CloudWatch: Standby</span>
     </div>
@@ -992,29 +1008,28 @@
 
   <!-- ================= 1. DISCORD CHAT VIEW ================= -->
   <div class="view-pane" id="chat-view">
-    <!-- Pane Header Strip (Split Screen Indicator) -->
     <div class="pane-header-strip">
       <div class="pane-badge-left">
         <span>💬</span>
         <span>Client Perspective (Discord App)</span>
       </div>
-      <div style="font-size:10px; color:var(--text-muted);">
-        Node: <b id="strip-node-label" style="color:#58a6ff;">gw-1</b> · Linear Order
+      <div>
+        Node: <b id="strip-node-label" style="color:#58a6ff;">gw-1</b> · Redis Linear Order
       </div>
     </div>
 
     <div class="chat-layout-body">
-      <!-- Guild Rail -->
+      <!-- Guild Server Rail -->
       <div id="guilds-rail">
         <div class="guild-icon active" title="SSD Backplane Server">SSD</div>
-        <div class="guild-icon" style="background:#5865f2; color:#fff;" title="Cluster Server">+</div>
+        <div class="guild-icon" style="background:#5865f2; color:#fff;" title="Add Cluster Server">+</div>
       </div>
 
       <!-- Channel Sidebar -->
       <div id="channels-side">
         <div class="server-title-bar">
           <span>SSD Chat Cluster</span>
-          <span style="font-size:10.5px; color:var(--text-muted);">v1.0</span>
+          <span style="font-size:10.5px; color:var(--text-dim);">v1.0</span>
         </div>
         <div class="channels-list">
           <div class="channel-category-label">Text Channels</div>
@@ -1024,16 +1039,16 @@
           <div class="channel-item" onclick="selectChannel('simulation-feed')"># simulation-feed</div>
         </div>
         <div class="current-user-box">
-          <div style="display:flex; align-items:center; gap:8px; min-width:0; flex:1;">
+          <div style="display:flex; align-items:center; gap:7px; min-width:0; flex:1;">
             <div class="user-avatar-badge" id="my-avatar">U
               <div class="user-status-dot"></div>
             </div>
             <div style="min-width:0; flex:1;">
               <div style="font-weight:700; color:#fff; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" id="my-username">Guest</div>
-              <div style="font-size:10px; color:var(--text-muted);" id="my-node">gw-1</div>
+              <div style="font-size:9.5px; color:var(--text-dim);" id="my-node">gw-1</div>
             </div>
           </div>
-          <button class="icon-tool-btn" onclick="promptChangeUser()" title="Change Username / Switch User" style="background:#2b2d31; border:1px solid #383a40; border-radius:4px; color:#dbdee1; padding:4px 8px; font-size:11px; cursor:pointer; flex-shrink:0;">Switch</button>
+          <button class="icon-tool-btn" onclick="promptChangeUser()" title="Change Username" style="padding:2px 7px; font-size:10px;">Switch</button>
         </div>
       </div>
 
@@ -1041,21 +1056,21 @@
       <div id="chat-main">
         <div class="chat-toolbar">
           <div class="chat-channel-info">
-            <button class="icon-tool-btn" onclick="toggleChannelsSide()" title="Toggle channel sidebar">☰</button>
-            <span style="color:var(--text-muted); font-size:16px;">#</span>
+            <button class="icon-tool-btn" onclick="toggleChannelsSide()" title="Toggle sidebar">☰</button>
+            <span style="color:var(--text-muted); font-size:15px;">#</span>
             <span class="chat-channel-name" id="current-channel-name">general</span>
             <span class="chat-channel-desc" id="current-channel-desc">Main room with Redis linearizable total order</span>
           </div>
 
           <div class="chat-actions-right">
-            <button class="icon-tool-btn" onclick="exportChatToS3()" title="Export & Backup transcript to Amazon S3">💾 Backup to S3</button>
-            <button class="icon-tool-btn" onclick="toggleMembersSide()" title="Toggle member roster">👥</button>
+            <button class="icon-tool-btn" onclick="exportChatToS3()" title="Export transcript to Amazon S3">💾 Backup</button>
             <button class="chaos-drop-btn" onclick="simulateDrop()" title="Simulate socket disconnect to watch zero-loss resume">⚡ Drop & Catchup</button>
+            <button class="icon-tool-btn" onclick="toggleMembersSide()" title="Toggle roster">👥</button>
           </div>
         </div>
 
         <div id="messages-scroller">
-          <!-- Dynamically populated messages -->
+          <!-- Populated by JS -->
         </div>
 
         <div class="chat-input-area">
@@ -1067,11 +1082,11 @@
         </div>
       </div>
 
-      <!-- Members Sidebar (Collapsible in Split Screen) -->
+      <!-- Members Sidebar -->
       <div id="members-side" class="collapsed">
         <div class="members-category">Online — <span id="online-count">1</span></div>
         <div id="members-list">
-          <!-- Dynamically populated members -->
+          <!-- Populated by JS -->
         </div>
       </div>
     </div>
@@ -1084,14 +1099,13 @@
 
   <!-- ================= 2. BACKSTAGE OBSERVABILITY VIEW ================= -->
   <div class="view-pane" id="backstage-view">
-    <!-- Pane Header Strip (Split Screen Indicator) -->
     <div class="pane-header-strip">
       <div class="pane-badge-right">
         <span>🎛️</span>
-        <span>Systems Perspective (Architecture & Telemetry Hub)</span>
+        <span>Systems Perspective (Architecture & Observability Hub)</span>
       </div>
-      <div style="font-size:10px; color:#50fa7b; font-family:monospace;">
-        Live Packet Pipeline: Connected
+      <div style="font-size:10px; color:#4ade80; font-family:'JetBrains Mono', monospace;">
+        Pipeline: Stream Active
       </div>
     </div>
 
@@ -1099,230 +1113,241 @@
       
       <!-- Backstage Top Bar -->
       <div class="backstage-header-box">
-        <div>
-          <div class="b-title">
-            <span>Dynamic Request-Flow & Telemetry Engine</span>
-          </div>
-          <div class="b-subtitle">
-            Observing requests flowing through API Gateway, NLB, Gateway Nodes, Redis Linearizer & AWS CloudWatch
-          </div>
+        <div class="b-title">
+          <span>Real-Time Request Pipeline & Telemetry</span>
         </div>
-        <div style="display:flex; gap:8px;">
-          <button class="btn-sim" style="background:#5865f2; color:#fff;" onclick="sendTestSnsAlert()">🚨 Trigger SNS Alert</button>
-          <button class="btn-sim btn-sim-spike" onclick="triggerSpike(50)">⚡ Burst 50 Reqs</button>
-          <button class="btn-sim" style="background:#28292f; border:1px solid #3e424d; color:#fff;" onclick="openCwModal()">☁️ AWS Credentials</button>
+        <div class="b-actions">
+          <button class="btn-sim btn-sim-spike" onclick="triggerSpike(50)">⚡ Burst 50</button>
+          <button class="btn-sim btn-sim-secondary" onclick="sendTestSnsAlert()">🚨 SNS Alert</button>
+          <button class="btn-sim btn-sim-secondary" onclick="openCwModal()">☁️ AWS Keys</button>
         </div>
       </div>
 
-      <!-- 1. REAL-TIME ARCHITECTURE TOPOLOGY DIAGRAM -->
+      <!-- 1. REAL-TIME ARCHITECTURE TOPOLOGY CANVAS -->
       <div class="dash-card">
         <div class="card-top">
-          <div>
-            <div class="card-label">🌐 Real-Time System Architecture Flow</div>
-            <div class="card-subtext">Click any node to inspect SSD design properties, guarantees, and live counters</div>
-          </div>
-          <div style="font-size:11px; color:#58a6ff; font-family:monospace;">
+          <div class="card-label">🌐 Distributed End-to-End Topology</div>
+          <div style="font-size:11px; color:#58a6ff; font-family:'JetBrains Mono', monospace;">
             Animation: <span id="pipeline-status">Active Stream</span>
           </div>
         </div>
 
         <div class="diagram-container">
-          <svg id="flow-svg" viewBox="0 0 1100 250" preserveAspectRatio="xMidYMid meet">
-            <!-- Connecting Pipes -->
-            <path id="pipe-clients-apigw" class="pipe-path active" d="M 120 125 L 250 125" />
-            <path id="pipe-apigw-nlb" class="pipe-path active" d="M 370 125 L 470 125" />
+          <svg id="flow-svg" viewBox="0 0 1260 225" preserveAspectRatio="xMidYMid meet">
+            <defs>
+              <!-- Card Gradient -->
+              <linearGradient id="cardGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#181a24" />
+                <stop offset="100%" stop-color="#121319" />
+              </linearGradient>
+              <linearGradient id="awsGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#1a1815" />
+                <stop offset="100%" stop-color="#131210" />
+              </linearGradient>
+            </defs>
+
+            <!-- Connecting Conduits -->
+            <path id="pipe-clients-apigw" class="pipe-path active" d="M 150 112.5 L 210 112.5" />
+            <path id="pipe-apigw-nlb" class="pipe-path active" d="M 355 112.5 L 415 112.5" />
+            
             <!-- Branching to 3 Nodes -->
-            <path id="pipe-nlb-gw1" class="pipe-path active" d="M 590 125 C 630 125, 640 55, 680 55" />
-            <path id="pipe-nlb-gw2" class="pipe-path active" d="M 590 125 L 680 125" />
-            <path id="pipe-nlb-gw3" class="pipe-path active" d="M 590 125 C 630 125, 640 195, 680 195" />
+            <path id="pipe-nlb-gw1" class="pipe-path active" d="M 560 112.5 C 600 112.5, 600 48, 640 48" />
+            <path id="pipe-nlb-gw2" class="pipe-path active" d="M 560 112.5 L 640 112.5" />
+            <path id="pipe-nlb-gw3" class="pipe-path active" d="M 560 112.5 C 600 112.5, 600 177, 640 177" />
+            
             <!-- Converging from Nodes to Redis -->
-            <path id="pipe-gw1-redis" class="pipe-path active" d="M 800 55 C 840 55, 850 125, 890 125" />
-            <path id="pipe-gw2-redis" class="pipe-path active" d="M 800 125 L 890 125" />
-            <path id="pipe-gw3-redis" class="pipe-path active" d="M 800 195 C 840 195, 850 125, 890 125" />
+            <path id="pipe-gw1-redis" class="pipe-path active" d="M 785 48 C 825 48, 825 112.5, 865 112.5" />
+            <path id="pipe-gw2-redis" class="pipe-path active" d="M 785 112.5 L 865 112.5" />
+            <path id="pipe-gw3-redis" class="pipe-path active" d="M 785 177 C 825 177, 825 112.5, 865 112.5" />
+            
             <!-- Redis to AWS Ecosystem -->
-            <path id="pipe-redis-cw" class="pipe-path active" d="M 990 125 L 1025 125" />
+            <path id="pipe-redis-cw" class="pipe-path active" d="M 1010 112.5 L 1060 112.5" />
 
             <!-- Packet particles layer -->
             <g id="packet-layer"></g>
 
             <!-- Node 1: Client Fleet -->
             <g class="node-group" onclick="inspectNode('clients')">
-              <rect class="node-rect" x="15" y="80" width="115" height="90" />
-              <text class="node-title" x="25" y="105">💻 Client Fleet</text>
-              <text class="node-sub" x="25" y="125">Browsers & Bots</text>
-              <text class="node-stat" x="25" y="150" id="node-stat-clients">10 Virtual Users</text>
+              <rect class="node-rect" x="15" y="65" width="135" height="95" rx="8" fill="url(#cardGrad)" />
+              <text class="node-title" x="25" y="90">💻 Client Fleet</text>
+              <text class="node-sub" x="25" y="108">Browsers & Bots</text>
+              <rect x="25" y="122" width="115" height="24" rx="4" fill="#0f1117" stroke="#252834" />
+              <text class="node-stat" x="82" y="138" text-anchor="middle" id="node-stat-clients">10 Virtual Users</text>
             </g>
 
             <!-- Node 2: API Gateway -->
             <g class="node-group" onclick="inspectNode('apigw')">
-              <rect class="node-rect" x="245" y="80" width="130" height="90" />
-              <text class="node-title" x="255" y="105">🛡️ API Gateway</text>
-              <text class="node-sub" x="255" y="125">JWT Auth / Ingress</text>
-              <text class="node-stat" x="255" y="150" id="node-stat-apigw">Rate Limit: 40/s</text>
+              <rect class="node-rect" x="210" y="65" width="145" height="95" rx="8" fill="url(#cardGrad)" />
+              <text class="node-title" x="222" y="90">🛡️ API Gateway</text>
+              <text class="node-sub" x="222" y="108">JWT Auth & Ingress</text>
+              <rect x="222" y="122" width="121" height="24" rx="4" fill="#0f1117" stroke="#252834" />
+              <text class="node-stat" x="282" y="138" text-anchor="middle" id="node-stat-apigw">Rate Limit: 40/s</text>
             </g>
 
             <!-- Node 3: Network Load Balancer (NLB) -->
             <g class="node-group" onclick="inspectNode('nlb')">
-              <rect class="node-rect" x="465" y="80" width="130" height="90" />
-              <text class="node-title" x="475" y="105">⚖️ Load Balancer</text>
-              <text class="node-sub" x="475" y="125">L4 Flow-Hash (TCP)</text>
-              <text class="node-stat" x="475" y="150" id="node-stat-nlb">Health: /readyz</text>
+              <rect class="node-rect" x="415" y="65" width="145" height="95" rx="8" fill="url(#cardGrad)" />
+              <text class="node-title" x="427" y="90">⚖️ Load Balancer</text>
+              <text class="node-sub" x="427" y="108">L4 Flow-Hash (TCP)</text>
+              <rect x="427" y="122" width="121" height="24" rx="4" fill="#0f1117" stroke="#252834" />
+              <text class="node-stat" x="487" y="138" text-anchor="middle" id="node-stat-nlb">Health: /readyz</text>
             </g>
 
-            <!-- Node 4: Gateway Cluster -->
+            <!-- Node 4: Gateway Cluster (3 Workers) -->
             <g class="node-group" onclick="inspectNode('gw1')">
-              <rect class="node-rect" x="675" y="25" width="130" height="60" />
-              <text class="node-title" x="685" y="48">⚡ Node: gw-1</text>
-              <text class="node-sub" x="685" y="62">Port 8080</text>
-              <text class="node-stat" x="685" y="76" id="node-stat-gw1">Sockets: 1</text>
+              <rect class="node-rect" x="640" y="20" width="145" height="56" rx="7" fill="url(#cardGrad)" />
+              <text class="node-title" x="652" y="42">⚡ Node: gw-1</text>
+              <text class="node-sub" x="652" y="60">Port 8080 · <tspan id="node-stat-gw1" fill="#58a6ff" font-family="'JetBrains Mono', monospace" font-weight="600">Sockets: 1</tspan></text>
             </g>
             <g class="node-group" onclick="inspectNode('gw2')">
-              <rect class="node-rect" x="675" y="95" width="130" height="60" />
-              <text class="node-title" x="685" y="118">⚡ Node: gw-2</text>
-              <text class="node-sub" x="685" y="132">Port 8081</text>
-              <text class="node-stat" x="685" y="146" id="node-stat-gw2">Standby</text>
+              <rect class="node-rect" x="640" y="85" width="145" height="56" rx="7" fill="url(#cardGrad)" />
+              <text class="node-title" x="652" y="107">⚡ Node: gw-2</text>
+              <text class="node-sub" x="652" y="125">Port 8081 · <tspan id="node-stat-gw2" fill="#58a6ff" font-family="'JetBrains Mono', monospace" font-weight="600">Standby</tspan></text>
             </g>
             <g class="node-group" onclick="inspectNode('gw3')">
-              <rect class="node-rect" x="675" y="165" width="130" height="60" />
-              <text class="node-title" x="685" y="188">⚡ Node: gw-3</text>
-              <text class="node-sub" x="685" y="202">Port 8082</text>
-              <text class="node-stat" x="685" y="216" id="node-stat-gw3">Standby</text>
+              <rect class="node-rect" x="640" y="150" width="145" height="56" rx="7" fill="url(#cardGrad)" />
+              <text class="node-title" x="652" y="172">⚡ Node: gw-3</text>
+              <text class="node-sub" x="652" y="190">Port 8082 · <tspan id="node-stat-gw3" fill="#58a6ff" font-family="'JetBrains Mono', monospace" font-weight="600">Standby</tspan></text>
             </g>
 
             <!-- Node 5: Redis Backplane -->
             <g class="node-group" onclick="inspectNode('redis')">
-              <rect class="node-rect" x="875" y="80" width="115" height="90" />
-              <text class="node-title" x="882" y="105">📦 Redis Backplane</text>
-              <text class="node-sub" x="882" y="125">Lua + Stream + PubSub</text>
-              <text class="node-stat" x="882" y="150" id="node-stat-redis">Linear Point</text>
+              <rect class="node-rect" x="865" y="65" width="145" height="95" rx="8" fill="url(#cardGrad)" />
+              <text class="node-title" x="877" y="90">📦 Redis Backplane</text>
+              <text class="node-sub" x="877" y="108">Lua + Stream Linearizer</text>
+              <rect x="877" y="122" width="121" height="24" rx="4" fill="#0f1117" stroke="#252834" />
+              <text class="node-stat" x="937" y="138" text-anchor="middle" id="node-stat-redis">REDIS (UP)</text>
             </g>
 
             <!-- Node 6: AWS Multi-Service Cloud Hub -->
             <g class="node-group" onclick="inspectNode('cw')">
-              <rect class="node-rect" x="1015" y="25" width="80" height="200" rx="8" style="fill:#161922; stroke:#ff9900; stroke-width:1.5;" />
-              <text class="node-title" x="1022" y="50" style="fill:#ff9900; font-size:11px;">☁️ AWS CLOUD</text>
+              <rect class="node-rect" x="1060" y="15" width="185" height="198" rx="9" fill="url(#awsGrad)" style="stroke:rgba(255, 153, 0, 0.55); stroke-width:1.5; filter: drop-shadow(0 0 6px rgba(255, 153, 0, 0.15));" />
               
-              <line x1="1020" y1="65" x2="1090" y2="65" stroke="#333" />
+              <!-- Header -->
+              <text class="node-title" x="1072" y="37" style="fill:#ff9900; font-size:11px;">☁️ AWS CLOUD</text>
+              <text x="1233" y="37" text-anchor="end" style="fill:#8e9297; font-size:9.5px; font-family:'Inter',sans-serif;">Learner Lab</text>
+              <line x1="1070" y1="46" x2="1235" y2="46" stroke="#2c303a" />
               
-              <text class="node-title" x="1022" y="85" style="font-size:10px;">📊 CloudWatch</text>
-              <text class="node-stat" x="1022" y="100" id="node-stat-cw" style="font-size:9.5px;">Metrics</text>
+              <!-- Sub-card 1: CloudWatch -->
+              <rect x="1070" y="52" width="165" height="42" rx="6" fill="#12141a" stroke="#242833" />
+              <text class="node-title" x="1078" y="70" style="font-size:10px;">📊 CloudWatch</text>
+              <text class="node-stat" x="1227" y="70" text-anchor="end" id="node-stat-cw" style="font-size:9.5px;">Metrics</text>
+              <text x="1078" y="86" style="fill:#7f8694; font-size:8.5px; font-family:'Inter',sans-serif;">PutMetricData Telemetry</text>
               
-              <text class="node-title" x="1022" y="130" style="font-size:10px;">🗄️ DynamoDB</text>
-              <text class="node-stat" x="1022" y="145" id="node-stat-dynamo" style="font-size:9.5px;">0 Audit Logs</text>
+              <!-- Sub-card 2: DynamoDB -->
+              <rect x="1070" y="100" width="165" height="42" rx="6" fill="#12141a" stroke="#242833" />
+              <text class="node-title" x="1078" y="118" style="font-size:10px;">🗄️ DynamoDB</text>
+              <text class="node-stat" x="1227" y="118" text-anchor="end" id="node-stat-dynamo" style="font-size:9.5px;">0 Archived</text>
+              <text x="1078" y="134" style="fill:#7f8694; font-size:8.5px; font-family:'Inter',sans-serif;">Immutable Audit Stream</text>
               
-              <text class="node-title" x="1022" y="175" style="font-size:10px;">🪣 S3 + SNS</text>
-              <text class="node-stat" x="1022" y="190" id="node-stat-s3sns" style="font-size:9.5px;">Backups & Alert</text>
+              <!-- Sub-card 3: S3 & SNS -->
+              <rect x="1070" y="148" width="165" height="42" rx="6" fill="#12141a" stroke="#242833" />
+              <text class="node-title" x="1078" y="166" style="font-size:10px;">🪣 S3 + 📢 SNS</text>
+              <text class="node-stat" x="1227" y="166" text-anchor="end" id="node-stat-s3sns" style="font-size:9.5px;">Backups</text>
+              <text x="1078" y="182" style="fill:#7f8694; font-size:8.5px; font-family:'Inter',sans-serif;">Cold Archive & DDoS Alerts</text>
             </g>
           </svg>
         </div>
       </div>
 
-      <!-- 2. SIMULATION CONTROLS -->
+      <!-- 2. SIMULATION CONTROLS & KPIS (UNIFIED COMPACT ROW) -->
       <div class="dash-card">
         <div class="card-top">
-          <div>
-            <div class="card-label">🚀 Traffic & Load Simulation Generator</div>
-            <div class="card-subtext">Run synthetic workloads, adjust client concurrency, and observe real-time throttles & latencies</div>
-          </div>
-          <div id="sim-live-badge" style="font-size:11.5px; font-weight:700; color:var(--text-muted);">
+          <div class="card-label">🚀 Traffic Engine & Live Telemetry</div>
+          <div id="sim-live-badge" style="font-size:11px; font-weight:700; color:var(--text-muted); font-family:'JetBrains Mono', monospace;">
             Status: Idle
           </div>
         </div>
 
-        <div class="sim-panel">
-          <div class="control-group">
-            <div class="control-label">
-              <span>Concurrent Virtual Clients</span>
-              <span class="control-val" id="val-clients">10</span>
+        <div class="sim-metrics-layout">
+          <!-- Left: Simulation Controls -->
+          <div class="sim-controls-strip">
+            <div class="sim-row">
+              <div class="control-group">
+                <div class="control-label">
+                  <span>Virtual Clients</span>
+                  <span class="control-val" id="val-clients">10</span>
+                </div>
+                <input type="range" class="sim-slider" id="input-clients" min="1" max="100" value="10" oninput="updateSimInputs()">
+              </div>
+
+              <div class="control-group">
+                <div class="control-label">
+                  <span>Throughput Rate</span>
+                  <span class="control-val" id="val-rate">5 req/s</span>
+                </div>
+                <input type="range" class="sim-slider" id="input-rate" min="1" max="50" value="5" oninput="updateSimInputs()">
+              </div>
             </div>
-            <input type="range" class="sim-slider" id="input-clients" min="1" max="100" value="10" oninput="updateSimInputs()">
-          </div>
 
-          <div class="control-group">
-            <div class="control-label">
-              <span>Throughput (Requests / sec)</span>
-              <span class="control-val" id="val-rate">5 req/s</span>
+            <div class="sim-row">
+              <select class="sim-select" id="select-pattern" style="flex:1;">
+                <option value="steady">Steady Load (Distributed)</option>
+                <option value="spike">Spike Traffic (Surge Burst)</option>
+                <option value="ddos">High-Load Throttling (HTTP 429)</option>
+                <option value="chaos">Chaos Drop & Auto-Resume</option>
+              </select>
+
+              <button class="btn-sim btn-sim-start" id="btn-toggle-sim" onclick="toggleSimulation()">
+                ▶ Start
+              </button>
+              <button class="btn-sim btn-sim-spike" onclick="triggerSpike(100)">
+                ⚡ 100 Spike
+              </button>
             </div>
-            <input type="range" class="sim-slider" id="input-rate" min="1" max="50" value="5" oninput="updateSimInputs()">
           </div>
 
-          <div class="control-group">
-            <div class="control-label">Traffic Pattern</div>
-            <select class="sim-select" id="select-pattern">
-              <option value="steady">Steady Load (Distributed)</option>
-              <option value="spike">Spike Traffic (Surge Burst)</option>
-              <option value="ddos">High-Load Throttling (HTTP 429)</option>
-              <option value="chaos">Chaos Drop & Resume (Gap Repair)</option>
-            </select>
-          </div>
-
-          <div class="sim-btn-row">
-            <button class="btn-sim btn-sim-start" id="btn-toggle-sim" onclick="toggleSimulation()">
-              ▶ Start Simulation
-            </button>
-            <button class="btn-sim btn-sim-spike" onclick="triggerSpike(100)">
-              ⚡ 100 Spike
-            </button>
-          </div>
-        </div>
-
-        <div class="stats-grid">
-          <div class="stat-tile">
-            <div class="stat-title">Total Synthetic Reqs</div>
-            <div class="stat-number" id="sim-stat-sent">0</div>
-            <div class="stat-extra">Routed via NLB</div>
-          </div>
-          <div class="stat-tile">
-            <div class="stat-title">Delivered</div>
-            <div class="stat-number" id="sim-stat-delivered" style="color:var(--discord-green);">0</div>
-            <div class="stat-extra">Gap-free ordered</div>
-          </div>
-          <div class="stat-tile">
-            <div class="stat-title">Rate Limited (429)</div>
-            <div class="stat-number" id="sim-stat-throttled" style="color:var(--discord-yellow);">0</div>
-            <div class="stat-extra">Token bucket cap</div>
-          </div>
-          <div class="stat-tile">
-            <div class="stat-title">Hop Latency</div>
-            <div class="stat-number" id="sim-stat-latency" style="color:#58a6ff;">12 ms</div>
-            <div class="stat-extra">Client-to-Backplane</div>
+          <!-- Right: Live Stat Tiles -->
+          <div class="stats-grid">
+            <div class="stat-tile">
+              <div class="stat-title">Total Sent</div>
+              <div class="stat-number" id="sim-stat-sent">0</div>
+              <div class="stat-extra">Routed via NLB</div>
+            </div>
+            <div class="stat-tile">
+              <div class="stat-title">Delivered</div>
+              <div class="stat-number" id="sim-stat-delivered" style="color:var(--discord-green);">0</div>
+              <div class="stat-extra">Gap-free ordered</div>
+            </div>
+            <div class="stat-tile">
+              <div class="stat-title">Throttled (429)</div>
+              <div class="stat-number" id="sim-stat-throttled" style="color:var(--discord-yellow);">0</div>
+              <div class="stat-extra">Token bucket cap</div>
+            </div>
+            <div class="stat-tile">
+              <div class="stat-title">Hop Latency</div>
+              <div class="stat-number" id="sim-stat-latency" style="color:#58a6ff;">12 ms</div>
+              <div class="stat-extra">Client-to-Backplane</div>
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- 3. SERVICES & CLOUDWATCH GRID -->
+      <!-- 3. DEEP DIVE TABS (TRACES vs CLOUD SERVICES) -->
       <div class="dash-card">
-        <div class="card-top">
-          <div>
-            <div class="card-label">☁️ Multi-Service Health & CloudWatch Grid</div>
-            <div class="card-subtext">Connected services: AWS Learner Lab, Local Containers, and Distributed Primaries</div>
-          </div>
-          <button class="btn-sim" style="background:#22242b; border:1px solid #3e424d; color:#fff;" onclick="testCwConnection()">
-            🔄 Test AWS CloudWatch
+        <div class="sub-tabs-bar">
+          <button class="sub-tab-btn active" id="subtab-traces" onclick="switchSubTab('traces')">
+            📋 Live Request Traces (Audit Log)
+          </button>
+          <button class="sub-tab-btn" id="subtab-services" onclick="switchSubTab('services')">
+            ☁️ Cloud & Infrastructure Health (6 Services)
           </button>
         </div>
 
-        <div class="services-grid" id="services-grid-cards">
-          <!-- Dynamically populated services -->
-        </div>
-      </div>
-
-      <!-- 4. LIVE REQUEST TRACE AUDIT LOG -->
-      <div class="dash-card">
-        <div class="card-top">
-          <div>
-            <div class="card-label">📋 Live End-to-End Request Trace Console</div>
-            <div class="card-subtext">Hop-by-hop breakdown: Client → API Gateway → NLB → Gateway Node → Redis → CloudWatch</div>
-          </div>
-          <div style="font-size:11px; color:var(--text-muted);">
-            Auto-refresh: 1.5s
+        <!-- Tab 1: Live Traces Console -->
+        <div id="section-traces">
+          <div class="logs-terminal" id="traces-console">
+            <div class="log-line">
+              <span class="log-ts">[Ready]</span>
+              <span class="log-route">Observability listener initialized. Ready to trace packet journeys.</span>
+            </div>
           </div>
         </div>
 
-        <div class="logs-terminal" id="traces-console">
-          <div class="log-line">
-            <span class="log-ts">[Ready]</span>
-            <span class="log-route">Observability listener initialized. Ready to trace packet journeys.</span>
+        <!-- Tab 2: Services Grid -->
+        <div id="section-services" style="display:none;">
+          <div class="services-grid" id="services-grid-cards">
+            <!-- Populated by JS -->
           </div>
         </div>
       </div>
@@ -1362,13 +1387,13 @@
       <input class="form-input" id="modal-aws-region" value="us-east-1">
     </div>
 
-    <div style="font-size:11px; color:#949ba4;">
+    <div style="font-size:10.5px; color:#8e9297;">
       Namespace: <code style="color:#58a6ff;">SSDMicroProject/ChatCluster</code> · Custom PutMetricData batches every 5s.
     </div>
 
     <div class="modal-footer">
       <button class="btn-outline" onclick="closeCwModal()">Cancel</button>
-      <button class="btn-accent" onclick="saveCwConfig()">Save & Connect to AWS</button>
+      <button class="btn-accent" onclick="saveCwConfig()">Save & Connect</button>
     </div>
   </div>
 </div>
@@ -1381,7 +1406,7 @@ const initialUser = urlParams.get('user') || sessionStorage.getItem('chat_user')
 const initialTenant = urlParams.get('tenant') || 'acme';
 
 const state = {
-  activeView: 'split', // Default to beautiful split screen!
+  activeView: 'split',
   user: initialUser,
   tenant: initialTenant,
   currentChannel: 'general',
@@ -1416,32 +1441,22 @@ function switchView(view) {
   if (view === 'split') {
     wrapper.className = 'split-mode';
     ratioBox.style.display = 'flex';
-    $('#chat-view').style.display = 'flex';
-    $('#backstage-view').style.display = 'flex';
     chatView.style.display = 'flex';
     backstageView.style.display = 'flex';
     chatView.classList.remove('active');
     backstageView.classList.remove('active');
-    // Collapse members sidebar by default in split screen to maximize chat space
     $('#members-side').className = 'collapsed';
   } else if (view === 'chat') {
-    wrapper.className = '';
     wrapper.className = 'chat-full-mode';
     ratioBox.style.display = 'none';
-    $('#chat-view').style.display = 'flex';
-    $('#backstage-view').style.display = 'none';
-    $('#members-side').className = ''; // expand members
     chatView.style.display = 'flex';
     backstageView.style.display = 'none';
     chatView.classList.add('active');
     backstageView.classList.remove('active');
-    $('#members-side').className = ''; // expand members in full view
+    $('#members-side').className = '';
   } else {
-    wrapper.className = '';
     wrapper.className = 'backstage-full-mode';
     ratioBox.style.display = 'none';
-    $('#chat-view').style.display = 'none';
-    $('#backstage-view').style.display = 'flex';
     chatView.style.display = 'none';
     backstageView.style.display = 'flex';
     backstageView.classList.add('active');
@@ -1456,13 +1471,21 @@ function setSplitRatio(pct) {
   });
 }
 
+function switchSubTab(tab) {
+  const isTraces = tab === 'traces';
+  $('#subtab-traces').className = 'sub-tab-btn' + (isTraces ? ' active' : '');
+  $('#subtab-services').className = 'sub-tab-btn' + (!isTraces ? ' active' : '');
+  $('#section-traces').style.display = isTraces ? 'block' : 'none';
+  $('#section-services').style.display = isTraces ? 'none' : 'block';
+}
+
 /* ================= DRAGGABLE SPLIT DIVIDER ================= */
 (function setupDraggableDivider() {
   const divider = $('#split-divider');
   const wrapper = $('#views-wrapper');
   let dragging = false;
 
-  divider.onmousedown = (e) => {
+  divider.onmousedown = () => {
     dragging = true;
     divider.classList.add('dragging');
     document.body.style.cursor = 'col-resize';
@@ -1487,7 +1510,7 @@ function setSplitRatio(pct) {
   });
 })();
 
-/* ================= SIDEBAR TOGGLES (FOR SPLIT SCREEN) ================= */
+/* ================= SIDEBAR TOGGLES ================= */
 function toggleChannelsSide() {
   const side = $('#channels-side');
   side.className = side.className.includes('collapsed') ? '' : 'collapsed';
@@ -1616,14 +1639,13 @@ function handleFrame(f) {
 
 function handleIncomingMsg(m) {
   const ch = state.channels[m.room];
-  if (!ch || m.seq <= ch.lastSeq) return; // Deduplication
+  if (!ch || m.seq <= ch.lastSeq) return;
   if (m.seq === ch.lastSeq + 1) {
     ch.lastSeq = m.seq;
     appendMessage(m);
     drainBuffer(m.room);
     return;
   }
-  // Sequence Gap: hold back and resume
   ch.held.set(m.seq, m);
   if (ch.joined) {
     ch.joined = false;
@@ -1657,7 +1679,7 @@ function renderMessages() {
   scroller.innerHTML = '';
   const ch = state.channels[state.currentChannel];
   if (!ch || ch.messages.length === 0) {
-    scroller.innerHTML = `<div class="msg-sys">Welcome to #${state.currentChannel}! Messages are sequenced via single-threaded Redis Lua scripts.</div>`;
+    scroller.innerHTML = `<div class="msg-sys">Welcome to #${state.currentChannel}! Messages are linearised via Redis stream.</div>`;
     return;
   }
 
@@ -1673,7 +1695,7 @@ function renderMessages() {
         <div class="msg-meta">
           <span class="msg-author">${escapeHtml(m.user)}</span>
           <span class="msg-time">${m.time}</span>
-          <span class="seq-badge">seq #${m.seq}</span>
+          <span class="seq-badge">#${m.seq}</span>
         </div>
         <div class="msg-text">${escapeHtml(m.text)}</div>
       </div>
@@ -1687,10 +1709,10 @@ function selectChannel(name) {
   state.currentChannel = name;
   $('#current-channel-name').textContent = name;
   const descMap = {
-    'general': 'Main room with Redis linearizable total order',
-    'architecture': 'Discussions on L4 vs L7 load balancing & gap repair',
+    'general': 'Main chat room (Redis atomic sequence order)',
+    'architecture': 'Discussions on L4/L7 load balancing & failover',
     'production-alerts': 'Live failover and backplane alerts',
-    'simulation-feed': 'Real-time feed of virtual client load tests',
+    'simulation-feed': 'Real-time feed of synthetic client load tests',
   };
   $('#current-channel-desc').textContent = descMap[name] || 'Channel feed';
 
@@ -1735,7 +1757,7 @@ function renderMembers() {
     const row = document.createElement('div');
     row.className = 'member-row' + (u === state.user ? ' active' : '');
     const isBot = u.startsWith('sim-bot');
-    row.innerHTML = `<span style="color:${isBot ? 'var(--discord-green)' : 'var(--discord-blurple)'}">●</span> ${escapeHtml(u)}`;
+    row.innerHTML = `<span style="color:${isBot ? 'var(--discord-green)' : 'var(--discord-blurple)'}; font-size:9px;">●</span> ${escapeHtml(u)}`;
     list.appendChild(row);
   }
 }
@@ -1759,14 +1781,14 @@ function updateSimInputs() {
   const rate = $('#input-rate').value;
   $('#val-clients').textContent = clients;
   $('#val-rate').textContent = `${rate} req/s`;
-  $('#node-stat-clients').textContent = `${clients} Virtual Users`;
+  $('#node-stat-clients').textContent = `${clients} Users`;
 }
 
 async function toggleSimulation() {
   if (state.simActive) {
     await fetch('/api/simulation/stop', { method: 'POST' });
     state.simActive = false;
-    $('#btn-toggle-sim').textContent = '▶ Start Simulation';
+    $('#btn-toggle-sim').textContent = '▶ Start';
     $('#btn-toggle-sim').className = 'btn-sim btn-sim-start';
     $('#sim-live-badge').textContent = 'Status: Idle';
     $('#sim-live-badge').style.color = 'var(--text-muted)';
@@ -1781,9 +1803,9 @@ async function toggleSimulation() {
       body: JSON.stringify({ clients, ratePerSec, pattern }),
     });
     state.simActive = true;
-    $('#btn-toggle-sim').textContent = '⏹ Stop Simulation';
+    $('#btn-toggle-sim').textContent = '⏹ Stop';
     $('#btn-toggle-sim').className = 'btn-sim btn-sim-stop';
-    $('#sim-live-badge').textContent = `Status: Generating ${ratePerSec} req/s`;
+    $('#sim-live-badge').textContent = `Status: ${ratePerSec} req/s`;
     $('#sim-live-badge').style.color = 'var(--discord-green)';
   }
 }
@@ -1795,7 +1817,7 @@ async function triggerSpike(count = 50) {
     body: JSON.stringify({ count }),
   });
   for (let i = 0; i < 8; i++) {
-    setTimeout(() => spawnPacketParticle('spike'), i * 80);
+    setTimeout(() => spawnPacketParticle('spike'), i * 70);
   }
 }
 
@@ -1806,30 +1828,30 @@ function spawnPacketParticle(type = 'normal') {
 
   const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
   circle.setAttribute('class', 'packet-dot');
-  circle.setAttribute('cx', '120');
-  circle.setAttribute('cy', '125');
+  circle.setAttribute('cx', '82');
+  circle.setAttribute('cy', '112.5');
 
   if (type === 'spike') {
     circle.setAttribute('fill', '#f0b232');
-    circle.style.filter = 'drop-shadow(0 0 6px #f0b232)';
+    circle.style.filter = 'drop-shadow(0 0 5px #f0b232)';
   } else if (type === 'error') {
     circle.setAttribute('fill', '#f23f43');
-    circle.style.filter = 'drop-shadow(0 0 6px #f23f43)';
+    circle.style.filter = 'drop-shadow(0 0 5px #f23f43)';
   }
 
   g.appendChild(circle);
 
-  const targetNodeY = [55, 125, 195][Math.floor(Math.random() * 3)];
+  const targetNodeY = [48, 112.5, 177][Math.floor(Math.random() * 3)];
   const waypoints = [
-    { x: 120, y: 125 },
-    { x: 310, y: 125 },
-    { x: 530, y: 125 },
-    { x: 740, y: targetNodeY },
-    { x: 940, y: 125 },
-    { x: 1050, y: 125 },
+    { x: 82, y: 112.5 },
+    { x: 282, y: 112.5 },
+    { x: 487, y: 112.5 },
+    { x: 712, y: targetNodeY },
+    { x: 937, y: 112.5 },
+    { x: 1150, y: 112.5 },
   ];
 
-  const duration = 1200;
+  const duration = 1100;
   const startAnim = performance.now();
 
   function move(now) {
@@ -1937,7 +1959,6 @@ async function fetchSystemState() {
       const servData = await servRes.json();
       renderServicesGrid(servData.services);
 
-      // Update AWS node stats
       const dynamoService = servData.services.find(s => s.id === 'dynamo-audit');
       if (dynamoService && dynamoService.metrics) {
         $('#node-stat-dynamo').textContent = `${dynamoService.metrics['Archived Items'] || 0} Archived`;
@@ -1996,9 +2017,9 @@ function updateTracesConsole(traces) {
     line.innerHTML = `
       <span class="log-ts">[${timeStr}]</span>
       <span class="log-route">[${tr.client} → #${tr.room}]</span>
-      <span class="log-node">routed via ${tr.gatewayNode}</span>
-      <span style="color:${statusColor}">status=${tr.status}</span>
-      <span style="color:#8be9fd">latency=${tr.totalLatencyMs}ms</span>
+      <span class="log-node">${tr.gatewayNode}</span>
+      <span style="color:${statusColor}">${tr.status}</span>
+      <span style="color:#8be9fd">${tr.totalLatencyMs}ms</span>
     `;
     terminal.appendChild(line);
   }
@@ -2039,10 +2060,20 @@ function closeCwModal() {
   $('#cw-modal').className = '';
 }
 
+function cleanAwsField(val) {
+  if (!val) return '';
+  let s = val.trim();
+  if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) {
+    s = s.slice(1, -1);
+  }
+  s = s.replace(/^(aws_session_token|aws_access_key_id|aws_secret_access_key)\s*=\s*/i, '');
+  return s.replace(/[\r\n\t\s]+/g, '').trim();
+}
+
 async function saveCwConfig() {
-  const accessKeyId = $('#modal-aws-key').value.trim();
-  const secretAccessKey = $('#modal-aws-secret').value.trim();
-  const sessionToken = $('#modal-aws-token').value.trim();
+  const accessKeyId = cleanAwsField($('#modal-aws-key').value);
+  const secretAccessKey = cleanAwsField($('#modal-aws-secret').value);
+  const sessionToken = cleanAwsField($('#modal-aws-token').value);
   const region = $('#modal-aws-region').value.trim() || 'us-east-1';
 
   if (!accessKeyId || !secretAccessKey) {

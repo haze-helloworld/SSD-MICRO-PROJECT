@@ -76,13 +76,34 @@ export class AwsIntegrationsService {
   }
 
   configure(creds: CloudWatchCredentials) {
-    this.creds = creds;
+    const sanitize = (val?: string) => {
+      if (!val) return undefined;
+      let s = val.trim();
+      if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) {
+        s = s.slice(1, -1);
+      }
+      s = s.replace(/^(aws_session_token|aws_access_key_id|aws_secret_access_key)\s*=\s*/i, '');
+      return s.replace(/[\r\n\t\s]+/g, '').trim();
+    };
+
+    const cleanKey = sanitize(creds.accessKeyId) || '';
+    const cleanSecret = sanitize(creds.secretAccessKey) || '';
+    const cleanToken = sanitize(creds.sessionToken);
+    const cleanRegion = creds.region?.trim() || 'us-east-1';
+
+    this.creds = {
+      accessKeyId: cleanKey,
+      secretAccessKey: cleanSecret,
+      sessionToken: cleanToken,
+      region: cleanRegion,
+    };
+
     const awsConfig = {
-      region: creds.region || 'us-east-1',
+      region: cleanRegion,
       credentials: {
-        accessKeyId: creds.accessKeyId.trim(),
-        secretAccessKey: creds.secretAccessKey.trim(),
-        sessionToken: creds.sessionToken?.trim() || undefined,
+        accessKeyId: cleanKey,
+        secretAccessKey: cleanSecret,
+        sessionToken: cleanToken,
       },
     };
 
