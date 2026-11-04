@@ -17,7 +17,13 @@ export class ServicesRegistry {
     connsCount: number;
     awsConnected: boolean;
     awsRegion: string;
+    awsExtra?: {
+      dynamoArchived: number;
+      s3Backups: number;
+      snsAlerts: number;
+    };
   }): ServiceHealth[] {
+    const extra = context.awsExtra || { dynamoArchived: 0, s3Backups: 0, snsAlerts: 0 };
     return [
       {
         id: 'api-gateway',
@@ -91,16 +97,44 @@ export class ServicesRegistry {
       },
       {
         id: 'dynamo-audit',
-        name: 'Message Audit Store (DynamoDB / Local)',
+        name: 'Amazon DynamoDB (Audit Archive)',
         type: 'Storage',
-        status: 'healthy',
-        latencyMs: 3.4,
+        status: context.awsConnected ? 'healthy' : 'standby',
+        latencyMs: context.awsConnected ? 12 : 3.4,
         costTier: 'AWS Free Tier',
-        details: 'Durable archive of message sequences with idempotency key indexing',
+        details: 'Durable immutable archive of message sequences with tenant partition key',
         metrics: {
-          'Partition Key': 'tenant#room',
-          'Sort Key': 'seq (Number)',
-          'Consistency': 'Strong Read',
+          'Table': 'SSDMicroProject_MessageAudit',
+          'Archived Items': extra.dynamoArchived,
+          'Retention TTL': '7 Days',
+        },
+      },
+      {
+        id: 's3-backup',
+        name: 'Amazon S3 (Transcript & Media Vault)',
+        type: 'Storage',
+        status: context.awsConnected ? 'healthy' : 'standby',
+        latencyMs: context.awsConnected ? 22 : 4.0,
+        costTier: 'AWS Free Tier',
+        details: 'Cloud storage bucket storing full JSON transcripts and chat attachments',
+        metrics: {
+          'Bucket': 'ssd-microproject-chat-backups',
+          'Snapshots Saved': extra.s3Backups,
+          'Access Mode': 'Pre-signed URL / Private',
+        },
+      },
+      {
+        id: 'sns-alerts',
+        name: 'Amazon SNS (Threat & DDoS Alerting)',
+        type: 'AWS',
+        status: context.awsConnected ? 'healthy' : 'standby',
+        latencyMs: context.awsConnected ? 18 : 2.5,
+        costTier: 'AWS Free Tier',
+        details: 'Publishes security event notifications for DDoS bursts, token bucket limits, and anomalies',
+        metrics: {
+          'Topic': 'SSDMicroProject_Alerts',
+          'Alerts Published': extra.snsAlerts,
+          'Subscribers': 'Email / Pager / SecOps',
         },
       },
     ];

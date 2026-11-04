@@ -8,6 +8,7 @@ services:
 
   gw1: &gw
     build: .
+    image: ws-backplane-gw:latest
     environment: &env
       NODE_ID: gw1
       PORT: "8080"

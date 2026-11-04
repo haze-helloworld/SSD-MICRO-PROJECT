@@ -196,10 +196,31 @@
     overflow: hidden;
     display: none;
     position: relative;
+    width: 100%;
+    flex: 1 1 100%;
+    min-width: 0;
   }
   .view-pane.active {
     display: flex;
     flex: 1;
+    display: flex !important;
+    width: 100% !important;
+    flex: 1 1 100% !important;
+    min-width: 0 !important;
+  }
+
+  /* Full Width View Panes (when either single tab is selected) */
+  #views-wrapper:not(.split-mode) #chat-view {
+    width: 100% !important;
+    flex: 1 1 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+  #views-wrapper:not(.split-mode) #backstage-view {
+    width: 100% !important;
+    flex: 1 1 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
   }
 
   /* Split Mode Layout */
@@ -208,12 +229,19 @@
     width: var(--split-left);
     flex-shrink: 0;
     flex-grow: 0;
+    width: var(--split-left) !important;
+    flex: 0 0 var(--split-left) !important;
+    max-width: var(--split-left) !important;
     border-right: none;
   }
   .split-mode #backstage-view {
     display: flex !important;
     flex: 1;
     min-width: 0;
+    flex: 1 1 0% !important;
+    width: auto !important;
+    max-width: none !important;
+    min-width: 0 !important;
   }
 
   /* Split Screen Drag Divider */
@@ -274,6 +302,8 @@
   #chat-view {
     flex-direction: column;
     background: var(--bg-main);
+    width: 100%;
+    min-width: 0;
   }
   .chat-layout-body {
     flex: 1;
@@ -634,6 +664,8 @@
     background: #141517;
     overflow-y: auto;
     scrollbar-gutter: stable;
+    width: 100%;
+    min-width: 0;
   }
   .backstage-container {
     padding: 16px 20px;
@@ -641,8 +673,10 @@
     flex-direction: column;
     gap: 16px;
     max-width: 1600px;
+    max-width: 100%;
     margin: 0 auto;
     width: 100%;
+    box-sizing: border-box;
   }
 
   /* Compact View Adjustments in Split Screen */
@@ -990,15 +1024,16 @@
           <div class="channel-item" onclick="selectChannel('simulation-feed')"># simulation-feed</div>
         </div>
         <div class="current-user-box">
-          <div style="display:flex; align-items:center; gap:8px;">
+          <div style="display:flex; align-items:center; gap:8px; min-width:0; flex:1;">
             <div class="user-avatar-badge" id="my-avatar">U
               <div class="user-status-dot"></div>
             </div>
-            <div style="min-width:0;">
+            <div style="min-width:0; flex:1;">
               <div style="font-weight:700; color:#fff; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" id="my-username">Guest</div>
               <div style="font-size:10px; color:var(--text-muted);" id="my-node">gw-1</div>
             </div>
           </div>
+          <button class="icon-tool-btn" onclick="promptChangeUser()" title="Change Username / Switch User" style="background:#2b2d31; border:1px solid #383a40; border-radius:4px; color:#dbdee1; padding:4px 8px; font-size:11px; cursor:pointer; flex-shrink:0;">Switch</button>
         </div>
       </div>
 
@@ -1013,6 +1048,7 @@
           </div>
 
           <div class="chat-actions-right">
+            <button class="icon-tool-btn" onclick="exportChatToS3()" title="Export & Backup transcript to Amazon S3">💾 Backup to S3</button>
             <button class="icon-tool-btn" onclick="toggleMembersSide()" title="Toggle member roster">👥</button>
             <button class="chaos-drop-btn" onclick="simulateDrop()" title="Simulate socket disconnect to watch zero-loss resume">⚡ Drop & Catchup</button>
           </div>
@@ -1072,6 +1108,7 @@
           </div>
         </div>
         <div style="display:flex; gap:8px;">
+          <button class="btn-sim" style="background:#5865f2; color:#fff;" onclick="sendTestSnsAlert()">🚨 Trigger SNS Alert</button>
           <button class="btn-sim btn-sim-spike" onclick="triggerSpike(50)">⚡ Burst 50 Reqs</button>
           <button class="btn-sim" style="background:#28292f; border:1px solid #3e424d; color:#fff;" onclick="openCwModal()">☁️ AWS Credentials</button>
         </div>
@@ -1102,7 +1139,7 @@
             <path id="pipe-gw1-redis" class="pipe-path active" d="M 800 55 C 840 55, 850 125, 890 125" />
             <path id="pipe-gw2-redis" class="pipe-path active" d="M 800 125 L 890 125" />
             <path id="pipe-gw3-redis" class="pipe-path active" d="M 800 195 C 840 195, 850 125, 890 125" />
-            <!-- Redis to CloudWatch -->
+            <!-- Redis to AWS Ecosystem -->
             <path id="pipe-redis-cw" class="pipe-path active" d="M 990 125 L 1025 125" />
 
             <!-- Packet particles layer -->
@@ -1154,18 +1191,27 @@
 
             <!-- Node 5: Redis Backplane -->
             <g class="node-group" onclick="inspectNode('redis')">
-              <rect class="node-rect" x="885" y="80" width="125" height="90" />
-              <text class="node-title" x="895" y="105">📦 Redis Backplane</text>
-              <text class="node-sub" x="895" y="125">Lua + Stream + PubSub</text>
-              <text class="node-stat" x="895" y="150" id="node-stat-redis">Linear Point</text>
+              <rect class="node-rect" x="875" y="80" width="115" height="90" />
+              <text class="node-title" x="882" y="105">📦 Redis Backplane</text>
+              <text class="node-sub" x="882" y="125">Lua + Stream + PubSub</text>
+              <text class="node-stat" x="882" y="150" id="node-stat-redis">Linear Point</text>
             </g>
 
-            <!-- Node 6: CloudWatch & Storage -->
+            <!-- Node 6: AWS Multi-Service Cloud Hub -->
             <g class="node-group" onclick="inspectNode('cw')">
-              <rect class="node-rect" x="1025" y="80" width="65" height="90" />
-              <text class="node-title" x="1030" y="110">☁️ AWS</text>
-              <text class="node-sub" x="1030" y="130">CloudWatch</text>
-              <text class="node-stat" x="1030" y="150" id="node-stat-cw">Metrics</text>
+              <rect class="node-rect" x="1015" y="25" width="80" height="200" rx="8" style="fill:#161922; stroke:#ff9900; stroke-width:1.5;" />
+              <text class="node-title" x="1022" y="50" style="fill:#ff9900; font-size:11px;">☁️ AWS CLOUD</text>
+              
+              <line x1="1020" y1="65" x2="1090" y2="65" stroke="#333" />
+              
+              <text class="node-title" x="1022" y="85" style="font-size:10px;">📊 CloudWatch</text>
+              <text class="node-stat" x="1022" y="100" id="node-stat-cw" style="font-size:9.5px;">Metrics</text>
+              
+              <text class="node-title" x="1022" y="130" style="font-size:10px;">🗄️ DynamoDB</text>
+              <text class="node-stat" x="1022" y="145" id="node-stat-dynamo" style="font-size:9.5px;">0 Audit Logs</text>
+              
+              <text class="node-title" x="1022" y="175" style="font-size:10px;">🪣 S3 + SNS</text>
+              <text class="node-stat" x="1022" y="190" id="node-stat-s3sns" style="font-size:9.5px;">Backups & Alert</text>
             </g>
           </svg>
         </div>
@@ -1330,10 +1376,14 @@
 <script>
 /* ================= GLOBAL STATE ================= */
 const $ = (s) => document.querySelector(s);
+const urlParams = new URLSearchParams(window.location.search);
+const initialUser = urlParams.get('user') || sessionStorage.getItem('chat_user') || ('user_' + Math.floor(Math.random() * 900 + 100));
+const initialTenant = urlParams.get('tenant') || 'acme';
+
 const state = {
   activeView: 'split', // Default to beautiful split screen!
-  user: 'user_' + Math.floor(Math.random() * 900 + 100),
-  tenant: 'acme',
+  user: initialUser,
+  tenant: initialTenant,
   currentChannel: 'general',
   token: '',
   ws: null,
@@ -1356,6 +1406,8 @@ function switchView(view) {
   state.activeView = view;
   const wrapper = $('#views-wrapper');
   const ratioBox = $('#split-ratio-controls');
+  const chatView = $('#chat-view');
+  const backstageView = $('#backstage-view');
 
   $('#tab-chat').className = 'nav-tab' + (view === 'chat' ? ' active' : '');
   $('#tab-backstage').className = 'nav-tab' + (view === 'backstage' ? ' active' : '');
@@ -1366,19 +1418,34 @@ function switchView(view) {
     ratioBox.style.display = 'flex';
     $('#chat-view').style.display = 'flex';
     $('#backstage-view').style.display = 'flex';
+    chatView.style.display = 'flex';
+    backstageView.style.display = 'flex';
+    chatView.classList.remove('active');
+    backstageView.classList.remove('active');
     // Collapse members sidebar by default in split screen to maximize chat space
     $('#members-side').className = 'collapsed';
   } else if (view === 'chat') {
     wrapper.className = '';
+    wrapper.className = 'chat-full-mode';
     ratioBox.style.display = 'none';
     $('#chat-view').style.display = 'flex';
     $('#backstage-view').style.display = 'none';
     $('#members-side').className = ''; // expand members
+    chatView.style.display = 'flex';
+    backstageView.style.display = 'none';
+    chatView.classList.add('active');
+    backstageView.classList.remove('active');
+    $('#members-side').className = ''; // expand members in full view
   } else {
     wrapper.className = '';
+    wrapper.className = 'backstage-full-mode';
     ratioBox.style.display = 'none';
     $('#chat-view').style.display = 'none';
     $('#backstage-view').style.display = 'flex';
+    chatView.style.display = 'none';
+    backstageView.style.display = 'flex';
+    backstageView.classList.add('active');
+    chatView.classList.remove('active');
   }
 }
 
@@ -1433,6 +1500,7 @@ function toggleMembersSide() {
 
 /* ================= INITIALIZATION & AUTH ================= */
 async function initChat() {
+  sessionStorage.setItem('chat_user', state.user);
   $('#my-username').textContent = state.user;
   $('#my-avatar').firstChild.textContent = state.user.charAt(0).toUpperCase();
 
@@ -1449,6 +1517,16 @@ async function initChat() {
   } catch (err) {
     console.error('Failed to get token:', err);
   }
+}
+
+function promptChangeUser() {
+  const newUser = prompt('Enter your username:', state.user);
+  if (!newUser || newUser.trim() === '' || newUser.trim() === state.user) return;
+  const cleaned = newUser.trim();
+  sessionStorage.setItem('chat_user', cleaned);
+  const url = new URL(window.location.href);
+  url.searchParams.set('user', cleaned);
+  window.location.href = url.toString();
 }
 
 /* ================= WEBSOCKET PROTOCOL ================= */
@@ -1786,9 +1864,54 @@ function inspectNode(id) {
     'gw2': 'Gateway Node (gw-2): Disposable gateway instance. If destroyed, connected clients reconnect to gw-1 or gw-3 and resume missing messages seamlessly.',
     'gw3': 'Gateway Node (gw-3): Disposable gateway instance participating in cross-node message fanout.',
     'redis': 'Redis Backplane: The linearization point of the entire cluster! Atomic Lua script runs: dedupe CID -> INCR seq -> XADD stream -> PUBLISH. Guarantees global total order.',
-    'cw': 'AWS CloudWatch: Ingests custom telemetry in real time using PutMetricData. Monitors RequestsPerSec, ActiveConnections, DeliveryLatency, and RateLimitedPackets.',
+    'cw': 'AWS Cloud Hub:\n• Amazon CloudWatch: Real-time custom metrics ingestion (PutMetricData)\n• Amazon DynamoDB: Immutable message sequence audit log with tenant partitioning\n• Amazon S3: Secure transcript backups & snapshots\n• Amazon SNS: Threat & DDoS rate-limiting alerts topic',
   };
   alert(details[id] || 'System Node');
+}
+
+/* ================= AWS INTERACTIONS ================= */
+async function exportChatToS3() {
+  const currentCh = state.currentChannel;
+  const chState = state.channels[currentCh];
+  const messages = chState ? chState.messages : [];
+
+  try {
+    const res = await fetch('/api/aws/s3/backup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        room: currentCh,
+        tenant: state.tenant,
+        messages,
+      }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      alert(`✅ Amazon S3 Backup Completed!\nTarget: ${data.path}\nSaved ${messages.length} messages.`);
+    } else {
+      alert(`⚠️ S3 Backup Notice:\n${data.error || 'Check S3 bucket permissions'}`);
+    }
+  } catch (err) {
+    alert('Error exporting to S3: ' + err.message);
+  }
+}
+
+async function sendTestSnsAlert() {
+  try {
+    const res = await fetch('/api/aws/sns/alert', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'MANUAL_TEST_ALERT',
+        details: 'Admin triggered test security notification for SSD Micro-Project',
+        severity: 'INFO',
+      }),
+    });
+    const data = await res.json();
+    alert(`📢 SNS Alert Status:\n${data.message || 'Dispatched'}`);
+  } catch (err) {
+    alert('Error publishing to SNS: ' + err.message);
+  }
 }
 
 /* ================= TELEMETRY POLLING ================= */
@@ -1813,6 +1936,17 @@ async function fetchSystemState() {
     if (servRes.ok) {
       const servData = await servRes.json();
       renderServicesGrid(servData.services);
+
+      // Update AWS node stats
+      const dynamoService = servData.services.find(s => s.id === 'dynamo-audit');
+      if (dynamoService && dynamoService.metrics) {
+        $('#node-stat-dynamo').textContent = `${dynamoService.metrics['Archived Items'] || 0} Archived`;
+      }
+      const s3Service = servData.services.find(s => s.id === 's3-backup');
+      const snsService = servData.services.find(s => s.id === 'sns-alerts');
+      if (s3Service && snsService) {
+        $('#node-stat-s3sns').textContent = `${s3Service.metrics['Snapshots Saved'] || 0} bkps · ${snsService.metrics['Alerts Published'] || 0} alrts`;
+      }
     }
   } catch (err) {
     console.warn('Telemetry poll error:', err);

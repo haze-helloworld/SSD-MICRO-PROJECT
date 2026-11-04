@@ -8,6 +8,7 @@ import { signToken, verifyToken, type Claims } from './auth.js';
 import type { Backplane } from './backplane/index.js';
 import { memberUser } from './backplane/index.js';
 import { CloudWatchService } from './cloudwatch.js';
+import { AwsIntegrationsService } from './aws-services.js';
 import type { Config } from './config.js';
 import { makeLogger, type Logger } from './logger.js';
 import { TokenBucket } from './ratelimit.js';
@@ -62,6 +63,7 @@ export class Gateway {
   private startedAt = Date.now();
   private indexHtml: string | null = null;
   readonly cw: CloudWatchService;
+  readonly aws: AwsIntegrationsService;
   readonly sim: SimulationManager;
   readonly servicesRegistry: ServicesRegistry;
 
@@ -81,6 +83,7 @@ export class Gateway {
   constructor(public cfg: Config, private bp: Backplane) {
     this.log = makeLogger({ node: cfg.nodeId });
     this.cw = new CloudWatchService();
+    this.aws = new AwsIntegrationsService();
     this.servicesRegistry = new ServicesRegistry();
     this.sim = new SimulationManager(async (user, room, text) => {
       const tenant = 'acme';
@@ -221,6 +224,7 @@ export class Gateway {
     }
 
     if (url.pathname === '/api/services/status') {
+      const awsStatus = this.aws.getStatus();
       return json(200, {
         services: this.servicesRegistry.getServices({
           nodeId: this.cfg.nodeId,
@@ -229,7 +233,54 @@ export class Gateway {
           connsCount: this.conns.size,
           awsConnected: this.cw.getMetrics().awsConnected,
           awsRegion: this.cw.getMetrics().region,
+          awsExtra: {
+            dynamoArchived: awsStatus.dynamoDb.itemsArchived,
+            s3Backups: awsStatus.s3.backupsCount,
+            snsAlerts: awsStatus.sns.alertsSent,
+          },
         }),
+      });
+    }
+
+    // AWS Services & CloudWatch APIs
+    if (url.pathname === '/api/aws/status') {
+      return json(200, {
+        cloudwatch: this.cw.getMetrics(),
+        services: this.aws.getStatus(),
+      });
+    }
+
+    if (url.pathname === '/api/aws/s3/backup' && req.method === 'POST') {
+      try {
+        const p = await readBody();
+        const room = String(p.room || 'general');
+        const tenant = String(p.tenant || 'acme');
+        const msgs = Array.isArray(p.messages) ? p.messages : [];
+        const res = await this.aws.exportRoomBackupToS3(tenant, room, msgs);
+        return json(200, res);
+      } catch (err: any) {
+        return json(400, { error: err.message || 'Failed to export to S3' });
+      }
+    }
+
+    if (url.pathname === '/api/aws/sns/alert' && req.method === 'POST') {
+      try {
+        const p = await readBody();
+        await this.aws.dispatchSecurityAlert({
+          type: String(p.type || 'MANUAL_TEST'),
+          details: String(p.details || 'User triggered security test'),
+          severity: p.severity || 'WARN',
+        });
+        return json(200, { success: true, message: 'SNS Security Alert dispatched' });
+      } catch (err: any) {
+        return json(400, { error: err.message || 'Failed to send SNS alert' });
+      }
+    }
+
+    if (url.pathname === '/api/aws/dynamo/audit') {
+      return json(200, {
+        count: this.aws.getStatus().dynamoDb.itemsArchived,
+        items: this.aws.getLocalAuditArchive().slice(-50),
       });
     }
 
@@ -241,12 +292,14 @@ export class Gateway {
     if (url.pathname === '/api/cloudwatch/config' && req.method === 'POST') {
       try {
         const p = await readBody();
-        const result = this.cw.configure({
+        const creds = {
           accessKeyId: String(p.accessKeyId || ''),
           secretAccessKey: String(p.secretAccessKey || ''),
           sessionToken: p.sessionToken ? String(p.sessionToken) : undefined,
           region: String(p.region || 'us-east-1'),
-        });
+        };
+        const result = this.cw.configure(creds);
+        this.aws.configure(creds);
         return json(200, result);
       } catch (err: any) {
         return json(400, { error: err.message || 'Invalid configuration payload' });
@@ -421,6 +474,13 @@ export class Gateway {
     const startTime = Date.now();
     if (!c.bucket.take()) {
       this.m.rateLimited++;
+      if (this.m.rateLimited % 5 === 0) {
+        void this.aws.dispatchSecurityAlert({
+          type: 'RATE_LIMIT_EXCEEDED',
+          details: `Client ${c.user} triggered token bucket throttle in room #${f.room}`,
+          severity: 'WARN',
+        });
+      }
       this.sim.recordTrace({
         id: randomUUID().slice(0, 8),
         timestamp: startTime,
@@ -443,6 +503,18 @@ export class Gateway {
       const r = await this.bp.publish({ tenant: c.tenant, room: f.room }, { user: c.user, text: f.text, cid });
       if (r.duplicate) this.m.dupPublishes++;
       this.sendRaw(c, { t: 'ack', cid, seq: r.seq, dup: r.duplicate });
+
+      // Archive into DynamoDB Message Audit Store
+      void this.aws.archiveMessage({
+        tenant: c.tenant,
+        room: f.room,
+        seq: r.seq,
+        user: c.user,
+        text: f.text,
+        cid,
+        ts: Date.now(),
+        node: this.cfg.nodeId,
+      });
 
       const totalLatency = Math.max(5, Date.now() - startTime + 8);
       this.sim.recordTrace({
