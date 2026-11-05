@@ -959,6 +959,77 @@
   .btn-outline { background: transparent; border: 1px solid #444752; color: var(--text-normal); padding: 7px 14px; border-radius: 5px; cursor: pointer; font-size: 12px; font-family: inherit; }
   .btn-accent { background: var(--discord-blurple); border: none; color: #fff; padding: 7px 16px; border-radius: 5px; cursor: pointer; font-weight: 600; font-size: 12px; font-family: inherit; }
   .btn-accent:hover { background: var(--discord-blurple-hover); }
+
+  /* Login Modal & Card */
+  #login-modal {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(7, 8, 11, 0.88);
+    backdrop-filter: blur(8px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+  #login-modal.open { display: flex; }
+  .login-card {
+    background: #14161c;
+    border: 1px solid var(--border-medium);
+    border-radius: 12px;
+    width: 440px;
+    max-width: 92vw;
+    padding: 26px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.75);
+  }
+  .login-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(88, 101, 242, 0.15);
+    color: #939aff;
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    border: 1px solid rgba(88, 101, 242, 0.3);
+  }
+  .login-title { font-size: 18px; font-weight: 700; color: #ffffff; letter-spacing: -0.3px; }
+  .login-subtitle { font-size: 12px; color: var(--text-muted); line-height: 1.4; }
+  .login-error-banner {
+    background: rgba(242, 63, 67, 0.15);
+    border: 1px solid rgba(242, 63, 67, 0.4);
+    color: #ff7b7d;
+    font-size: 12px;
+    padding: 9px 12px;
+    border-radius: 6px;
+    display: none;
+  }
+  .login-tabs-nav {
+    display: flex;
+    gap: 4px;
+    background: #0d0e12;
+    padding: 3px;
+    border-radius: 6px;
+    border: 1px solid var(--border-subtle);
+  }
+  .login-tab-btn {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 11.5px;
+    font-weight: 600;
+    padding: 6px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+  .login-tab-btn:hover { color: #fff; }
+  .login-tab-btn.active { background: #232632; color: #fff; }
 </style>
 </head>
 <body>
@@ -1003,10 +1074,16 @@
   </div>
 
   <div class="header-actions">
+    <div id="user-top-badge" style="display:flex; align-items:center; gap:6px; background:#14161b; padding:4px 10px; border-radius:20px; border:1px solid var(--border-subtle); font-size:11.5px; cursor:pointer;" onclick="openLoginModal()" title="Current Authenticated User">
+      <span style="width:7px; height:7px; border-radius:50%; background:var(--discord-green); display:inline-block;"></span>
+      <span id="top-username-label" style="font-weight:600; color:#fff;">Guest</span>
+      <span class="badge-ssd" id="top-tenant-label" style="font-size:9px;">acme</span>
+    </div>
     <div class="cw-status-pill standby" id="cw-pill" onclick="openCwModal()" title="Configure AWS Learner Lab Credentials">
       <span class="live-dot"></span>
       <span id="cw-pill-text">CloudWatch: Standby</span>
     </div>
+    <button class="icon-tool-btn" onclick="logout()" title="Sign Out of Cluster" style="padding:4px 9px; font-size:11px; color:#f23f43; border-color:rgba(242,63,67,0.3);">Logout</button>
   </div>
 </header>
 
@@ -1054,7 +1131,8 @@
               <div style="font-size:9.5px; color:var(--text-dim);" id="my-node">gw-1</div>
             </div>
           </div>
-          <button class="icon-tool-btn" onclick="promptChangeUser()" title="Change Username" style="padding:2px 7px; font-size:10px;">Switch</button>
+          <button class="icon-tool-btn" onclick="openLoginModal()" title="Switch User / Sign In" style="padding:2px 7px; font-size:10px;">Switch</button>
+          <button class="icon-tool-btn" onclick="logout()" title="Sign Out" style="padding:2px 7px; font-size:10px; margin-left:3px; color:#f23f43;">Logout</button>
         </div>
       </div>
 
@@ -1416,6 +1494,66 @@
   </div>
 </div>
 
+<!-- PRODUCTION AUTHENTICATION / LOGIN MODAL -->
+<div id="login-modal">
+  <div class="login-card">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <span class="login-badge">Production Auth</span>
+      <span style="font-size:11px; color:var(--text-dim); font-family:'JetBrains Mono',monospace;">HS256 Verified</span>
+    </div>
+
+    <div>
+      <div class="login-title">Sign In to SSD Cluster</div>
+      <div class="login-subtitle">Authenticate with your user credentials or a production JWT token to access the chat and observability hub.</div>
+    </div>
+
+    <div id="login-error" class="login-error-banner"></div>
+
+    <div class="login-tabs-nav">
+      <button class="login-tab-btn active" id="tab-login-creds" type="button" onclick="switchLoginMode('creds')">Account Credentials</button>
+      <button class="login-tab-btn" id="tab-login-jwt" type="button" onclick="switchLoginMode('jwt')">JWT Token</button>
+    </div>
+
+    <!-- Credentials Form -->
+    <form id="form-login-creds" onsubmit="handleLoginSubmit(event, 'creds')">
+      <div class="form-group" style="margin-bottom:10px;">
+        <div class="form-label">Username</div>
+        <input class="form-input" id="login-user" placeholder="e.g. admin, tanvi, alice" autocomplete="username" required>
+      </div>
+
+      <div class="form-group" style="margin-bottom:10px;">
+        <div class="form-label">Tenant Organization</div>
+        <input class="form-input" id="login-tenant" value="acme" placeholder="acme" autocomplete="organization" required>
+      </div>
+
+      <div class="form-group" style="margin-bottom:12px;">
+        <div class="form-label">Password</div>
+        <input class="form-input" id="login-password" type="password" placeholder="Enter password (e.g. admin123)" autocomplete="current-password" required>
+      </div>
+
+      <div style="font-size:10.5px; color:var(--text-dim); margin-bottom:14px; line-height:1.4;">
+        Default admin password is <code style="color:#58a6ff;">admin123</code> or any password with 6+ characters.
+      </div>
+
+      <button type="submit" id="btn-login-submit" class="btn-accent" style="width:100%; padding:9px; font-size:12.5px; font-weight:700;">
+        Sign In
+      </button>
+    </form>
+
+    <!-- JWT Token Form -->
+    <form id="form-login-jwt" onsubmit="handleLoginSubmit(event, 'jwt')" style="display:none;">
+      <div class="form-group" style="margin-bottom:12px;">
+        <div class="form-label">Production Signed JWT Token</div>
+        <textarea class="form-textarea" id="login-jwt-token" rows="4" placeholder="Paste JWT token minted via npm run token..."></textarea>
+      </div>
+
+      <button type="submit" id="btn-login-jwt-submit" class="btn-accent" style="width:100%; padding:9px; font-size:12.5px; font-weight:700;">
+        Authenticate with Token
+      </button>
+    </form>
+  </div>
+</div>
+
 <script>
 /* ================= GLOBAL STATE ================= */
 const $ = (s) => document.querySelector(s);
@@ -1540,38 +1678,171 @@ function toggleMembersSide() {
 }
 
 /* ================= INITIALIZATION & AUTH ================= */
-async function initChat() {
-  sessionStorage.setItem('chat_user', state.user);
-  $('#my-username').textContent = state.user;
-  $('#my-avatar').firstChild.textContent = state.user.charAt(0).toUpperCase();
+function switchLoginMode(mode) {
+  const credsTab = $('#tab-login-creds');
+  const jwtTab = $('#tab-login-jwt');
+  const credsForm = $('#form-login-creds');
+  const jwtForm = $('#form-login-jwt');
+  const errBox = $('#login-error');
+  if (errBox) errBox.style.display = 'none';
 
-  try {
-    const res = await fetch('/dev/token', {
-      method: 'POST',
-      body: JSON.stringify({ user: state.user, tenant: state.tenant }),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      state.token = data.token;
-      connectWs();
-    }
-  } catch (err) {
-    console.error('Failed to get token:', err);
+  if (mode === 'jwt') {
+    credsTab.className = 'login-tab-btn';
+    jwtTab.className = 'login-tab-btn active';
+    credsForm.style.display = 'none';
+    jwtForm.style.display = 'block';
+  } else {
+    credsTab.className = 'login-tab-btn active';
+    jwtTab.className = 'login-tab-btn';
+    credsForm.style.display = 'block';
+    jwtForm.style.display = 'none';
   }
 }
 
+function openLoginModal(errorMsg = '') {
+  const modal = $('#login-modal');
+  if (modal) modal.className = 'open';
+  if ($('#login-user')) {
+    $('#login-user').value = state.user && !state.user.startsWith('user_') ? state.user : '';
+    $('#login-user').focus();
+  }
+  if ($('#login-tenant')) {
+    $('#login-tenant').value = state.tenant || 'acme';
+  }
+  if ($('#login-password')) {
+    $('#login-password').value = '';
+  }
+  const errBox = $('#login-error');
+  if (errBox) {
+    if (errorMsg) {
+      errBox.textContent = errorMsg;
+      errBox.style.display = 'block';
+    } else {
+      errBox.style.display = 'none';
+    }
+  }
+}
+
+function closeLoginModal() {
+  if (!state.token) {
+    alert('Please sign in with valid credentials to connect to the cluster.');
+    return;
+  }
+  const modal = $('#login-modal');
+  if (modal) modal.className = '';
+}
+
+async function handleLoginSubmit(e, mode = 'creds') {
+  if (e) e.preventDefault();
+  const errBox = $('#login-error');
+  if (errBox) errBox.style.display = 'none';
+
+  const user = $('#login-user').value.trim();
+  const tenant = $('#login-tenant').value.trim() || 'acme';
+  const password = $('#login-password').value;
+  const rawToken = $('#login-jwt-token') ? $('#login-jwt-token').value.trim() : '';
+
+  const submitBtn = mode === 'jwt' ? $('#btn-login-jwt-submit') : $('#btn-login-submit');
+  const originalText = submitBtn.textContent;
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Authenticating...';
+
+  try {
+    const payload = mode === 'jwt' ? { token: rawToken } : { user, tenant, password };
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.ok) {
+      throw new Error(data.error || 'Authentication failed');
+    }
+
+    state.token = data.token;
+    state.user = data.user;
+    state.tenant = data.tenant;
+    sessionStorage.setItem('chat_token', data.token);
+    sessionStorage.setItem('chat_user', data.user);
+    sessionStorage.setItem('chat_tenant', data.tenant);
+
+    updateUserUI();
+    const modal = $('#login-modal');
+    if (modal) modal.className = '';
+
+    if (state.ws) {
+      try { state.ws.close(); } catch {}
+    }
+    connectWs();
+  } catch (err) {
+    if (errBox) {
+      errBox.textContent = err.message || 'Login failed';
+      errBox.style.display = 'block';
+    }
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = originalText;
+  }
+}
+
+function logout(notice = '') {
+  sessionStorage.removeItem('chat_token');
+  sessionStorage.removeItem('chat_user');
+  sessionStorage.removeItem('chat_tenant');
+  state.token = '';
+  if (state.ws) {
+    try { state.ws.close(1000, 'User logged out'); } catch {}
+    state.ws = null;
+  }
+  openLoginModal(notice || 'You have logged out. Please sign in to connect.');
+}
+
+function updateUserUI() {
+  if ($('#my-username')) $('#my-username').textContent = state.user;
+  if ($('#my-avatar')) $('#my-avatar').firstChild.textContent = state.user.charAt(0).toUpperCase();
+  if ($('#top-username-label')) $('#top-username-label').textContent = state.user;
+  if ($('#top-tenant-label')) $('#top-tenant-label').textContent = state.tenant;
+}
+
+async function initChat() {
+  const storedToken = sessionStorage.getItem('chat_token') || urlParams.get('token');
+  const storedUser = sessionStorage.getItem('chat_user') || urlParams.get('user');
+  const storedTenant = sessionStorage.getItem('chat_tenant') || urlParams.get('tenant') || 'acme';
+
+  if (storedUser) state.user = storedUser;
+  if (storedTenant) state.tenant = storedTenant;
+
+  if (storedToken) {
+    try {
+      const res = await fetch(`/api/auth/verify?token=${encodeURIComponent(storedToken)}`);
+      if (res.ok) {
+        const data = await res.json();
+        state.token = storedToken;
+        state.user = data.claims.user;
+        state.tenant = data.claims.tenant;
+        updateUserUI();
+        connectWs();
+        return;
+      }
+    } catch (err) {
+      console.warn('Stored token verification failed:', err);
+    }
+  }
+
+  // Not authenticated: prompt user to log in!
+  openLoginModal();
+}
+
 function promptChangeUser() {
-  const newUser = prompt('Enter your username:', state.user);
-  if (!newUser || newUser.trim() === '' || newUser.trim() === state.user) return;
-  const cleaned = newUser.trim();
-  sessionStorage.setItem('chat_user', cleaned);
-  const url = new URL(window.location.href);
-  url.searchParams.set('user', cleaned);
-  window.location.href = url.toString();
+  openLoginModal();
 }
 
 /* ================= WEBSOCKET PROTOCOL ================= */
 function connectWs() {
+  if (!state.token) {
+    openLoginModal('Please log in with your credentials to connect.');
+    return;
+  }
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
   const url = `${proto}://${location.host}/ws?token=${encodeURIComponent(state.token)}`;
   const ws = (state.ws = new WebSocket(url));
@@ -1589,11 +1860,17 @@ function connectWs() {
     }
   };
 
-  ws.onclose = () => {
+  ws.onclose = (e) => {
     if (state.ws !== ws) return;
     Object.values(state.channels).forEach((ch) => (ch.joined = false));
-    const delay = Math.min(2000, 50 * 2 ** state.attempt++);
-    setTimeout(connectWs, delay);
+    if (e.code === 4401 || e.code === 1008 || e.reason === 'Unauthorized') {
+      logout('Authentication expired or unauthorized. Please log in again.');
+      return;
+    }
+    const delay = Math.min(3000, 100 * 2 ** state.attempt++);
+    setTimeout(() => {
+      if (state.token && state.ws === ws) connectWs();
+    }, delay);
   };
 }
 

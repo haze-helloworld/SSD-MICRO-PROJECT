@@ -4,6 +4,7 @@ export interface Config {
   port: number;
   nodeId: string;
   jwtSecret: string;
+  authPassword?: string;
   backplane: 'redis' | 'memory';
   redisUrl: string;
   devTokens: boolean; // exposes POST /dev/token (demo only!)
@@ -28,6 +29,7 @@ export function loadConfig(overrides: Partial<Config> = {}, env: NodeJS.ProcessE
     port: num(env.PORT, 8080),
     nodeId: env.NODE_ID || `node-${randomUUID().slice(0, 6)}`,
     jwtSecret: env.JWT_SECRET || 'dev-secret-change-me',
+    authPassword: env.AUTH_PASSWORD || 'admin123',
     backplane: env.BACKPLANE === 'redis' ? 'redis' : (env.BACKPLANE === 'memory' ? 'memory' : (env.REDIS_URL ? 'redis' : 'memory')),
     redisUrl: env.REDIS_URL || 'redis://127.0.0.1:6379',
     devTokens: env.DEV_TOKENS !== 'false',

@@ -1,3 +1,4 @@
+try { process.loadEnvFile?.(); } catch {}
 import { RedisBackplane } from './backplane/redis.js';
 import { MemoryBackplane } from './backplane/memory.js';
 import type { Backplane } from './backplane/index.js';

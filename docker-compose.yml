@@ -13,8 +13,9 @@ services:
       NODE_ID: gw1
       PORT: "8080"
       REDIS_URL: redis://redis:6379
-      JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me}
-      DEV_TOKENS: "true"
+      JWT_SECRET: ${JWT_SECRET:-e7747b6543d755858e1bb844df94c183343b2b290903d4893b5c31c56059bb58}
+      DEV_TOKENS: ${DEV_TOKENS:-false}
+      AUTH_PASSWORD: ${AUTH_PASSWORD:-admin123}
     depends_on: { redis: { condition: service_healthy } }
   gw2:
     <<: *gw

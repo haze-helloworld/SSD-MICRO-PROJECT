@@ -77,6 +77,25 @@ describe('observability & simulation endpoints', () => {
       assert.equal(resCwConfig.status, 200);
       const dataCwConfig = await resCwConfig.json();
       assert.equal(dataCwConfig.success, true);
+
+      // Test Production Auth /api/auth/login
+      const resLogin = await fetch(`http://127.0.0.1:${gw.port}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user: 'alice', password: 'admin123', tenant: 'acme' }),
+      });
+      assert.equal(resLogin.status, 200);
+      const dataLogin = await resLogin.json();
+      assert.equal(dataLogin.ok, true);
+      assert.ok(dataLogin.token);
+      assert.equal(dataLogin.user, 'alice');
+
+      // Test /api/auth/verify
+      const resVerify = await fetch(`http://127.0.0.1:${gw.port}/api/auth/verify?token=${dataLogin.token}`);
+      assert.equal(resVerify.status, 200);
+      const dataVerify = await resVerify.json();
+      assert.equal(dataVerify.ok, true);
+      assert.equal(dataVerify.claims.user, 'alice');
     } finally {
       await gw.stop(0);
     }

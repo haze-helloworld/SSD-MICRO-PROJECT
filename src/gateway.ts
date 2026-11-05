@@ -14,7 +14,7 @@ import { makeLogger, type Logger } from './logger.js';
 import { TokenBucket } from './ratelimit.js';
 import { ServicesRegistry } from './services.js';
 import { SimulationManager } from './simulation.js';
-import { NAME_RE, refKey, type ClientFrame, type EventPayload, type RoomRef, type ServerFrame, type StoredMsg } from './types.js';
+import { NAME_RE, USER_RE, refKey, type ClientFrame, type EventPayload, type RoomRef, type ServerFrame, type StoredMsg } from './types.js';
 
 interface Conn {
   id: string;
@@ -361,7 +361,47 @@ export class Gateway {
       return json(200, { ok: true, droppedConns: dropped });
     }
 
-    if (url.pathname === '/dev/token' && req.method === 'POST' && this.cfg.devTokens) {
+    // ------------------------------------------------------------------ Production Authentication
+    if (url.pathname === '/api/auth/login' && req.method === 'POST') {
+      try {
+        const p = await readBody(4096);
+        if (p.token) {
+          const claims = verifyToken(String(p.token), this.cfg.jwtSecret);
+          if (!claims) return json(401, { ok: false, error: 'Invalid or expired JWT token' });
+          return json(200, { ok: true, token: String(p.token), user: claims.user, tenant: claims.tenant, rooms: claims.rooms });
+        }
+
+        const user = String(p.user || p.username || '').trim();
+        const tenant = String(p.tenant || 'acme').trim();
+        const password = String(p.password || '').trim();
+
+        if (!user) return json(400, { ok: false, error: 'Username is required' });
+        if (!USER_RE.test(user)) return json(400, { ok: false, error: 'Username must be 1-32 chars (alphanumeric, -, _)' });
+        if (!NAME_RE.test(tenant)) return json(400, { ok: false, error: 'Tenant must be 1-32 chars (alphanumeric, -, _)' });
+
+        const expectedPassword = this.cfg.authPassword || 'admin123';
+        if (password !== expectedPassword) {
+          return json(401, { ok: false, error: 'Invalid password. Enter the configured cluster password (default: admin123).' });
+        }
+
+        const token = signToken(this.cfg.jwtSecret, { user, tenant, rooms: p.rooms }, 86400);
+        return json(200, { ok: true, token, user, tenant, rooms: p.rooms || null });
+      } catch (err: any) {
+        return json(400, { ok: false, error: err.message || 'Login request failed' });
+      }
+    }
+
+    if (url.pathname === '/api/auth/verify' && req.method === 'GET') {
+      const token = url.searchParams.get('token');
+      const claims = verifyToken(token, this.cfg.jwtSecret);
+      if (!claims) return json(401, { ok: false, error: 'Unauthorized or expired token' });
+      return json(200, { ok: true, claims });
+    }
+
+    if (url.pathname === '/dev/token' && req.method === 'POST') {
+      if (!this.cfg.devTokens) {
+        return json(403, { error: 'Dev token bypass is disabled in production. Use /api/auth/login.' });
+      }
       try {
         const p = await readBody(4096);
         const token = signToken(this.cfg.jwtSecret, { user: String(p.user), tenant: String(p.tenant), rooms: p.rooms });
