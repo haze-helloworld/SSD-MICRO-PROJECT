@@ -361,6 +361,25 @@ export class Gateway {
       return json(200, { ok: true, droppedConns: dropped });
     }
 
+    if (url.pathname === '/api/chaos/drop-and-resume' && req.method === 'POST') {
+      try {
+        const p = await readBody(4096);
+        const room = String(p.room || 'general');
+        const tenant = String(p.tenant || 'acme');
+        const cid = randomUUID();
+        // Publish an in-flight message to Redis backplane while client is disconnected!
+        const r = await this.bp.publish({ tenant, room }, {
+          user: 'ClusterFailoverBot',
+          text: `[In-Flight during failover] Atomic sequence preserved in Redis Stream log.`,
+          cid,
+        });
+        this.m.msgsIn++;
+        return json(200, { ok: true, seq: r.seq, message: 'In-flight message queued in stream log' });
+      } catch (err: any) {
+        return json(400, { ok: false, error: err.message });
+      }
+    }
+
     // ------------------------------------------------------------------ Production Authentication
     if (url.pathname === '/api/auth/login' && req.method === 'POST') {
       try {

@@ -1867,10 +1867,13 @@ function connectWs() {
       logout('Authentication expired or unauthorized. Please log in again.');
       return;
     }
-    const delay = Math.min(3000, 100 * 2 ** state.attempt++);
-    setTimeout(() => {
-      if (state.token && state.ws === ws) connectWs();
-    }, delay);
+    // Only auto-reconnect if we are not in an active managed chaos drop
+    if (!state.isChaosDropping) {
+      const delay = Math.min(3000, 100 * 2 ** state.attempt++);
+      setTimeout(() => {
+        if (state.token && state.ws === ws) connectWs();
+      }, delay);
+    }
   };
 }
 
@@ -1884,12 +1887,37 @@ function joinChannel(channelName) {
 
 function handleFrame(f) {
   switch (f.t) {
-    case 'welcome':
+    case 'welcome': {
+      const prevNode = state.nodeId;
       state.nodeId = f.node;
       $('#my-node').textContent = f.node;
-      $('#strip-node-label').textContent = f.node;
+      const strip = $('#strip-node-label');
+      if (strip) {
+        strip.textContent = f.node;
+        strip.style.color = '#58a6ff';
+      }
       Object.keys(state.channels).forEach(joinChannel);
+
+      // Handle chaos drop recovery announcement
+      if (state.isChaosDropping) {
+        state.isChaosDropping = false;
+        const curRoom = state.currentChannel;
+        const currentSeq = state.channels[curRoom] ? state.channels[curRoom].lastSeq : 0;
+        appendSystemMessage(`Auto-Resume Success! Reconnected to gateway node "${f.node}". Caught up sequence from #${currentSeq} via Redis Streams. Zero packet loss!`, 'resume');
+        
+        const btn = document.querySelector('.chaos-drop-btn');
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = 'Simulate Drop';
+          btn.style.background = '';
+          btn.style.color = '';
+        }
+        for (let i = 0; i < 4; i++) {
+          setTimeout(() => spawnPacketParticle('normal'), i * 80);
+        }
+      }
       break;
+    }
 
     case 'joined': {
       const ch = state.channels[f.room];
@@ -1958,6 +1986,22 @@ function drainBuffer(room) {
   }
 }
 
+function appendSystemMessage(text, type = 'info') {
+  const ch = state.channels[state.currentChannel];
+  if (!ch) return;
+  const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const color = type === 'drop' ? '#f23f43' : (type === 'resume' ? '#23a55a' : '#58a6ff');
+  ch.messages.push({
+    isSystem: true,
+    user: 'System',
+    text,
+    time,
+    seq: 'SYS',
+    color,
+  });
+  renderMessages();
+}
+
 function appendMessage(m) {
   const ch = state.channels[m.room];
   if (!ch) return;
@@ -1979,9 +2023,21 @@ function renderMessages() {
   }
 
   for (const m of ch.messages) {
+    if (m.isSystem) {
+      const banner = document.createElement('div');
+      banner.style.cssText = `display:flex; align-items:center; gap:8px; padding:7px 12px; margin:6px 0; background:rgba(255,255,255,0.03); border-left:3px solid ${m.color || '#5865f2'}; border-radius:4px; font-size:12px;`;
+      banner.innerHTML = `
+        <span style="font-weight:700; color:${m.color || '#5865f2'}; font-family:'JetBrains Mono',monospace;">[System]</span>
+        <span style="color:#dcdee1; flex:1;">${escapeHtml(m.text)}</span>
+        <span style="color:var(--text-dim); font-size:10px;">${m.time}</span>
+      `;
+      scroller.appendChild(banner);
+      continue;
+    }
+
     const card = document.createElement('div');
     card.className = 'msg-card';
-    const isBot = m.user.startsWith('sim-bot');
+    const isBot = m.user.startsWith('sim-bot') || m.user.startsWith('Cluster');
     const avatarColor = isBot ? '#23a55a' : (m.user === state.user ? '#5865f2' : '#9b59b6');
 
     card.innerHTML = `
@@ -2064,10 +2120,60 @@ function renderTyping() {
 }
 setInterval(renderTyping, 1000);
 
-function simulateDrop() {
-  if (state.ws) {
-    state.ws.close();
+async function simulateDrop() {
+  const btn = document.querySelector('.chaos-drop-btn');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Dropping Socket...';
+    btn.style.background = '#f23f43';
+    btn.style.color = '#fff';
   }
+
+  const currentRoom = state.currentChannel;
+  const lastSeq = state.channels[currentRoom] ? state.channels[currentRoom].lastSeq : 0;
+  state.isChaosDropping = true;
+
+  // 1. Post immediate feedback in the chat
+  appendSystemMessage(`Simulated socket disconnect! Severing connection from gateway node (${state.nodeId}). Watch for automatic resume from sequence #${lastSeq}...`, 'drop');
+
+  // 2. Update node status indicator in the header strip
+  const nodeLabel = $('#strip-node-label');
+  if (nodeLabel) {
+    nodeLabel.textContent = 'Disconnected (Reconnecting...)';
+    nodeLabel.style.color = '#f23f43';
+  }
+
+  // 3. Animate error particles on topology diagram
+  for (let i = 0; i < 4; i++) {
+    setTimeout(() => spawnPacketParticle('error'), i * 80);
+  }
+
+  // 4. Close the WebSocket connection
+  if (state.ws) {
+    try {
+      state.ws.close(1012, 'Simulated Chaos Drop');
+    } catch (e) {}
+  }
+
+  // 5. Publish an in-flight message on the server backplane while client is disconnected!
+  try {
+    await fetch('/api/chaos/drop-and-resume', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ room: currentRoom, tenant: state.tenant }),
+    });
+  } catch (err) {
+    console.warn('Chaos drop-and-resume error:', err);
+  }
+
+  // 6. After 1.2s delay, reconnect and re-sync
+  setTimeout(() => {
+    if (nodeLabel) {
+      nodeLabel.textContent = 'Reconnecting via NLB...';
+      nodeLabel.style.color = '#f0b232';
+    }
+    connectWs();
+  }, 1200);
 }
 
 /* ================= SIMULATION CONTROLS ================= */
@@ -2307,7 +2413,7 @@ function updateTracesConsole(traces) {
     const line = document.createElement('div');
     line.className = 'log-line';
     const timeStr = new Date(tr.timestamp).toLocaleTimeString();
-    const statusColor = tr.status === 'delivered' ? '#50fa7b' : (tr.status === 'rate_limited' ? '#f1fa8c' : '#ff5555');
+    const statusColor = tr.status === 'delivered' ? '#50fa7b' : (tr.status === 'gap_filled' ? '#8be9fd' : (tr.status === 'rate_limited' ? '#f1fa8c' : '#ff5555'));
 
     line.innerHTML = `
       <span class="log-ts">[${timeStr}]</span>

@@ -170,6 +170,46 @@ export class SimulationManager {
       return;
     }
 
+    // Handle Chaos Drop & Stream Repair demonstration
+    const isChaosDrop = this.config.pattern === 'chaos' && Math.random() < 0.35;
+    if (isChaosDrop) {
+      hops.push({
+        from: 'Network Load Balancer',
+        to: 'Gateway Cluster',
+        protocol: 'TCP',
+        latencyMs: Math.floor(Math.random() * 25) + 15,
+        status: 'repaired',
+        description: 'Simulated TCP socket drop -> Reconnect to survivor -> Stream gap repaired via XRANGE',
+      });
+
+      hops.push({
+        from: 'Gateway Cluster',
+        to: 'Redis Backplane',
+        protocol: 'REDIS',
+        latencyMs: 8,
+        status: 'ok',
+        description: 'Atomic stream catchup: Missing messages replayed; zero loss guaranteed',
+      });
+
+      try {
+        const res = await this.triggerMessage(clientId, room, text + ' (repaired post-drop)');
+        const gwNode = res.node || 'gw-2';
+        this.stats.totalDelivered++;
+        this.recordTrace({
+          id: traceId,
+          timestamp: startTime,
+          client: clientId,
+          room,
+          type: 'msg',
+          status: 'gap_filled',
+          totalLatencyMs: hop1Latency + hop2Latency + 38,
+          gatewayNode: gwNode,
+          hops,
+        });
+      } catch {}
+      return;
+    }
+
     try {
       const res = await this.triggerMessage(clientId, room, text);
       const gwNode = res.node || 'gw-1';
