@@ -238,6 +238,7 @@ export class Gateway {
           awsExtra: {
             dynamoArchived: awsStatus.dynamoDb.itemsArchived,
             s3Backups: awsStatus.s3.backupsCount,
+            s3Bucket: awsStatus.s3.bucketName,
             snsAlerts: awsStatus.sns.alertsSent,
           },
         }),
@@ -258,7 +259,8 @@ export class Gateway {
         const room = String(p.room || 'general');
         const tenant = String(p.tenant || 'acme');
         const msgs = Array.isArray(p.messages) ? p.messages : [];
-        const res = await this.aws.exportRoomBackupToS3(tenant, room, msgs);
+        const customBucket = p.bucket ? String(p.bucket).trim() : undefined;
+        const res = await this.aws.exportRoomBackupToS3(tenant, room, msgs, customBucket);
         return json(200, res);
       } catch (err: any) {
         return json(400, { error: err.message || 'Failed to export to S3' });
@@ -299,9 +301,10 @@ export class Gateway {
           secretAccessKey: String(p.secretAccessKey || ''),
           sessionToken: p.sessionToken ? String(p.sessionToken) : undefined,
           region: String(p.region || 'us-east-1'),
+          bucketName: p.bucketName ? String(p.bucketName).trim() : undefined,
         };
-        const result = this.cw.configure(creds);
-        this.aws.configure(creds);
+        const result = await this.cw.configure(creds);
+        await this.aws.configure(creds);
 
         // Broadcast to all other gateway replicas in the cluster via Redis
         void this.bp.publishEvent({ tenant: 'system', room: 'global' }, {

@@ -20,10 +20,11 @@ export class ServicesRegistry {
     awsExtra?: {
       dynamoArchived: number;
       s3Backups: number;
+      s3Bucket?: string;
       snsAlerts: number;
     };
   }): ServiceHealth[] {
-    const extra = context.awsExtra || { dynamoArchived: 0, s3Backups: 0, snsAlerts: 0 };
+    const extra = context.awsExtra || { dynamoArchived: 0, s3Backups: 0, s3Bucket: 'ssd-chat-backups-948302796328', snsAlerts: 0 };
     return [
       {
         id: 'api-gateway',
@@ -118,7 +119,7 @@ export class ServicesRegistry {
         costTier: 'AWS Free Tier',
         details: 'Cloud storage bucket storing full JSON transcripts and chat attachments',
         metrics: {
-          'Bucket': 'ssd-microproject-chat-backups',
+          'Bucket': extra.s3Bucket || 'ssd-chat-backups-948302796328',
           'Snapshots Saved': extra.s3Backups,
           'Access Mode': 'Pre-signed URL / Private',
         },

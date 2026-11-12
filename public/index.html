@@ -1483,6 +1483,14 @@
       <input class="form-input" id="modal-aws-region" value="us-east-1">
     </div>
 
+    <div class="form-group">
+      <div class="form-label">S3 Backup Bucket Name</div>
+      <input class="form-input" id="modal-aws-bucket" placeholder="ssd-chat-backups-948302796328">
+      <div style="font-size:10.5px; color:#8e9297; margin-top:3px;">
+        Must be a unique bucket created in your AWS Learner Lab account (e.g. <code style="color:#58a6ff;">ssd-chat-backups-948302796328</code>)
+      </div>
+    </div>
+
     <div style="font-size:10.5px; color:#8e9297;">
       Namespace: <code style="color:#58a6ff;">SSDMicroProject/ChatCluster</code> · Custom PutMetricData batches every 5s.
     </div>
@@ -2310,7 +2318,22 @@ async function exportChatToS3() {
     });
     const data = await res.json();
     if (data.ok) {
-      alert(`Amazon S3 Backup Completed\nTarget: ${data.path}\nSaved ${messages.length} messages.`);
+      if (data.savedLocally && data.s3Error) {
+        alert(
+          `Backup Successfully Saved Locally!\n` +
+          `File: ${data.localPath}\n` +
+          `Total: ${messages.length} messages\n\n` +
+          `Cloud S3 Notice:\n` +
+          `Could not upload to S3 bucket "${data.bucket}":\n` +
+          `${data.s3Error}\n\n` +
+          `Fix in AWS Learner Lab:\n` +
+          `1. S3 bucket names are globally unique.\n` +
+          `2. Create a bucket in your AWS console (e.g. ssd-chat-backups-948302796328).\n` +
+          `3. Click the CloudWatch pill above and enter your bucket name in the AWS settings.`
+        );
+      } else {
+        alert(`Amazon S3 Backup Completed\nTarget: ${data.path}\nSaved ${messages.length} messages.`);
+      }
     } else {
       alert(`S3 Backup Notice:\n${data.error || 'Check S3 bucket permissions'}`);
     }
@@ -2454,8 +2477,15 @@ function renderServicesGrid(services) {
 }
 
 /* ================= AWS CLOUDWATCH MODAL ================= */
-function openCwModal() {
+async function openCwModal() {
   $('#cw-modal').className = 'open';
+  try {
+    const res = await fetch('/api/aws/status');
+    const data = await res.json();
+    if (data?.services?.s3?.bucketName && !$('#modal-aws-bucket').value) {
+      $('#modal-aws-bucket').value = data.services.s3.bucketName;
+    }
+  } catch {}
 }
 function closeCwModal() {
   $('#cw-modal').className = '';
@@ -2467,7 +2497,7 @@ function cleanAwsField(val) {
   if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) {
     s = s.slice(1, -1);
   }
-  s = s.replace(/^(aws_session_token|aws_access_key_id|aws_secret_access_key)\s*=\s*/i, '');
+  s = s.replace(/^(aws_session_token|aws_access_key_id|aws_secret_access_key|secret_key|session_token|access_key|token|key)\s*=\s*/i, '');
   return s.replace(/[\r\n\t\s]+/g, '').trim();
 }
 
@@ -2476,6 +2506,7 @@ async function saveCwConfig() {
   const secretAccessKey = cleanAwsField($('#modal-aws-secret').value);
   const sessionToken = cleanAwsField($('#modal-aws-token').value);
   const region = $('#modal-aws-region').value.trim() || 'us-east-1';
+  const bucketName = ($('#modal-aws-bucket')?.value || '').trim();
 
   if (!accessKeyId || !secretAccessKey) {
     alert('Please enter your AWS Access Key ID and Secret Access Key.');
@@ -2485,7 +2516,7 @@ async function saveCwConfig() {
   const res = await fetch('/api/cloudwatch/config', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ accessKeyId, secretAccessKey, sessionToken, region }),
+    body: JSON.stringify({ accessKeyId, secretAccessKey, sessionToken, region, bucketName }),
   });
 
   if (res.ok) {

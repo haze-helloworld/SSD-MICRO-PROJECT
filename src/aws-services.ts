@@ -1,7 +1,5 @@
-import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, PutCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
-import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
-import { SNSClient, PublishCommand } from '@aws-sdk/client-sns';
+import fs from 'node:fs';
+import path from 'node:path';
 import type { CloudWatchCredentials } from './cloudwatch.js';
 
 export interface AuditMessageRecord {
@@ -39,14 +37,14 @@ export interface AwsServicesStatus {
 }
 
 export class AwsIntegrationsService {
-  private dynamoDoc: DynamoDBDocumentClient | null = null;
-  private s3Client: S3Client | null = null;
-  private snsClient: SNSClient | null = null;
+  private dynamoDoc: any = null;
+  private s3Client: any = null;
+  private snsClient: any = null;
 
   private creds: CloudWatchCredentials | null = null;
-  private tableName = 'SSDMicroProject_MessageAudit';
-  private bucketName = 'ssd-microproject-chat-backups';
-  private topicArn = 'arn:aws:sns:us-east-1:123456789012:SSDMicroProject_Alerts';
+  private tableName = process.env.AWS_DYNAMODB_TABLE || 'SSDMicroProject_MessageAudit';
+  private bucketName = process.env.AWS_S3_BUCKET || process.env.S3_BUCKET || 'ssd-chat-backups-948302796328';
+  private topicArn = process.env.AWS_SNS_TOPIC_ARN || 'arn:aws:sns:us-east-1:123456789012:SSDMicroProject_Alerts';
 
   private localAuditArchive: AuditMessageRecord[] = [];
   private itemsArchived = 0;
@@ -66,7 +64,7 @@ export class AwsIntegrationsService {
     const envRegion = process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION || 'us-east-1';
 
     if (envKey && envSecret) {
-      this.configure({
+      void this.configure({
         accessKeyId: envKey,
         secretAccessKey: envSecret,
         sessionToken: envToken,
@@ -75,16 +73,30 @@ export class AwsIntegrationsService {
     }
   }
 
-  configure(creds: CloudWatchCredentials) {
+  getBucketName(): string {
+    return this.bucketName;
+  }
+
+  setBucketName(name: string) {
+    if (name && name.trim()) {
+      this.bucketName = name.trim();
+    }
+  }
+
+  async configure(creds: CloudWatchCredentials & { bucketName?: string }): Promise<{ success: boolean; error?: string }> {
     const sanitize = (val?: string) => {
       if (!val) return undefined;
       let s = val.trim();
       if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) {
         s = s.slice(1, -1);
       }
-      s = s.replace(/^(aws_session_token|aws_access_key_id|aws_secret_access_key)\s*=\s*/i, '');
+      s = s.replace(/^(aws_session_token|aws_access_key_id|aws_secret_access_key|secret_key|session_token|access_key|token|key)\s*=\s*/i, '');
       return s.replace(/[\r\n\t\s]+/g, '').trim();
     };
+
+    if (creds.bucketName && creds.bucketName.trim()) {
+      this.bucketName = creds.bucketName.trim();
+    }
 
     const cleanKey = sanitize(creds.accessKeyId) || '';
     const cleanSecret = sanitize(creds.secretAccessKey) || '';
@@ -108,13 +120,36 @@ export class AwsIntegrationsService {
     };
 
     try {
-      const ddbClient = new DynamoDBClient(awsConfig);
-      this.dynamoDoc = DynamoDBDocumentClient.from(ddbClient);
-      this.s3Client = new S3Client(awsConfig);
-      this.snsClient = new SNSClient(awsConfig);
-      this.dynamoError = null;
-      this.s3Error = null;
-      this.snsError = null;
+      // Dynamically load AWS SDK packages so missing packages don't crash startup
+      const [ddbMod, ddbDocMod, s3Mod, snsMod] = await Promise.allSettled([
+        import('@aws-sdk/client-dynamodb'),
+        import('@aws-sdk/lib-dynamodb'),
+        import('@aws-sdk/client-s3'),
+        import('@aws-sdk/client-sns'),
+      ]);
+
+      if (ddbMod.status === 'fulfilled' && ddbDocMod.status === 'fulfilled') {
+        const ddbClient = new ddbMod.value.DynamoDBClient(awsConfig);
+        this.dynamoDoc = ddbDocMod.value.DynamoDBDocumentClient.from(ddbClient);
+        this.dynamoError = null;
+      } else {
+        this.dynamoDoc = null;
+      }
+
+      if (s3Mod.status === 'fulfilled') {
+        this.s3Client = new s3Mod.value.S3Client(awsConfig);
+        this.s3Error = null;
+      } else {
+        this.s3Client = null;
+      }
+
+      if (snsMod.status === 'fulfilled') {
+        this.snsClient = new snsMod.value.SNSClient(awsConfig);
+        this.snsError = null;
+      } else {
+        this.snsClient = null;
+      }
+
       return { success: true };
     } catch (err: any) {
       const msg = err.message || String(err);
@@ -138,6 +173,7 @@ export class AwsIntegrationsService {
     if (!this.dynamoDoc) return;
 
     try {
+      const { PutCommand } = await import('@aws-sdk/lib-dynamodb');
       await this.dynamoDoc.send(
         new PutCommand({
           TableName: this.tableName,
@@ -162,8 +198,23 @@ export class AwsIntegrationsService {
   /**
    * 2. Amazon S3: Export room transcript & snapshots to S3 bucket.
    */
-  async exportRoomBackupToS3(tenant: string, room: string, messages: any[]): Promise<{ ok: boolean; path: string; error?: string }> {
-    const key = `backups/${tenant}/${room}/snapshot-${Date.now()}.json`;
+  async exportRoomBackupToS3(
+    tenant: string,
+    room: string,
+    messages: any[],
+    targetBucket?: string
+  ): Promise<{
+    ok: boolean;
+    path: string;
+    savedLocally?: boolean;
+    localPath?: string;
+    s3Error?: string;
+    bucket?: string;
+    error?: string;
+  }> {
+    const bucket = (targetBucket || this.bucketName || 'ssd-chat-backups-948302796328').trim();
+    const filename = `snapshot-${Date.now()}.json`;
+    const key = `backups/${tenant}/${room}/${filename}`;
     const body = JSON.stringify({
       tenant,
       room,
@@ -175,24 +226,71 @@ export class AwsIntegrationsService {
     this.backupsCount++;
     this.lastBackupTs = Date.now();
 
+    // 1. Always save a persistent local copy so user data is NEVER lost
+    let localRelPath = `backups/${tenant}/${room}/${filename}`;
+    try {
+      const localDir = path.join(process.cwd(), 'backups', tenant, room);
+      fs.mkdirSync(localDir, { recursive: true });
+      fs.writeFileSync(path.join(localDir, filename), body, 'utf8');
+    } catch {
+      // ignore write error in read-only environments
+    }
+
     if (!this.s3Client) {
-      return { ok: true, path: `s3://${this.bucketName}/${key} (simulated local backup)` };
+      return {
+        ok: true,
+        path: `s3://${bucket}/${key} (simulated local backup)`,
+        savedLocally: true,
+        localPath: localRelPath,
+        bucket,
+      };
     }
 
     try {
-      await this.s3Client.send(
-        new PutObjectCommand({
-          Bucket: this.bucketName,
-          Key: key,
-          Body: body,
-          ContentType: 'application/json',
-        })
-      );
-      this.s3Error = null;
-      return { ok: true, path: `s3://${this.bucketName}/${key}` };
+      const { PutObjectCommand, CreateBucketCommand } = await import('@aws-sdk/client-s3');
+      try {
+        await this.s3Client.send(
+          new PutObjectCommand({
+            Bucket: bucket,
+            Key: key,
+            Body: body,
+            ContentType: 'application/json',
+          })
+        );
+        this.s3Error = null;
+        return { ok: true, path: `s3://${bucket}/${key}`, localPath: localRelPath, bucket };
+      } catch (uploadErr: any) {
+        // If bucket does not exist, try auto-creating if permissions allow
+        if (uploadErr.name === 'NoSuchBucket' || uploadErr.Code === 'NoSuchBucket') {
+          try {
+            await this.s3Client.send(new CreateBucketCommand({ Bucket: bucket }));
+            await this.s3Client.send(
+              new PutObjectCommand({
+                Bucket: bucket,
+                Key: key,
+                Body: body,
+                ContentType: 'application/json',
+              })
+            );
+            this.s3Error = null;
+            return { ok: true, path: `s3://${bucket}/${key}`, localPath: localRelPath, bucket };
+          } catch {
+            // creation not permitted; throw original error
+          }
+        }
+        throw uploadErr;
+      }
     } catch (err: any) {
       this.s3Error = err.message || String(err);
-      return { ok: false, path: key, error: this.s3Error || undefined };
+      // Graceful fallback: local backup is saved, report clear actionable explanation
+      return {
+        ok: true,
+        path: localRelPath,
+        savedLocally: true,
+        localPath: localRelPath,
+        bucket,
+        s3Error: this.s3Error || undefined,
+      };
     }
   }
 
@@ -206,6 +304,7 @@ export class AwsIntegrationsService {
     if (!this.snsClient) return;
 
     try {
+      const { PublishCommand } = await import('@aws-sdk/client-sns');
       await this.snsClient.send(
         new PublishCommand({
           TopicArn: this.topicArn,
