@@ -5,18 +5,20 @@ services:
     dockerfilePath: Dockerfile
     plan: free
     region: oregon
+    autoDeploy: true
     envVars:
       - key: PORT
         value: 8080
       - key: BACKPLANE
         value: memory
       - key: DEV_TOKENS
-        value: "true"
+        value: "false"
       - key: JWT_SECRET
+        generateValue: true
+      - key: AUTH_PASSWORD
         generateValue: true
       # To connect to external Redis, change BACKPLANE to redis and set REDIS_URL:
       # - key: BACKPLANE
       #   value: redis
       # - key: REDIS_URL
       #   sync: false
-

@@ -1,8 +1,10 @@
-node_modules
-dist
+node_modules/
+dist/
+backups/
 .env
-.env.production
-.env*.local
+.env.*
+!*.example
+!.env*.example
 bench/results/*.json
 *.log
 .terraform

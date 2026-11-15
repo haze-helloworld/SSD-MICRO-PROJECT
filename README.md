@@ -75,6 +75,25 @@ docker compose up --build     # nginx -> 3 gateways -> redis
 
 Docs: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) · [`docs/TEST-REPORT.md`](docs/TEST-REPORT.md) · [`docs/AWS-AND-COSTS.md`](docs/AWS-AND-COSTS.md) · [`docs/HANDOVER.md`](docs/HANDOVER.md)
 
+## Deploying to Render with Learner Lab credentials
+
+1. **Push to GitHub**: Push your commits to `main` on GitHub.
+2. **Connect as Blueprint on Render**: In the Render Dashboard, select **New +** $\to$ **Blueprint** and pick this repository. Render automatically uses [`render.yaml`](render.yaml) and enables auto-deploy on push to `main`.
+3. **Environment Variables**: Variables are provisioned automatically via `render.yaml` with generated secrets (`JWT_SECRET`, `AUTH_PASSWORD`). Set environment variables once with **NO AWS keys** — AWS credentials must never be baked into env vars, Docker images, or the repository.
+4. **Enter AWS Credentials via UI**: After each AWS Academy Learner Lab session starts:
+   - Open the deployed app URL.
+   - Log in.
+   - Click the **CloudWatch / AWS Credentials** status pill in the top header.
+   - Paste the whole AWS CLI credentials block from Learner Lab (*AWS Details* $\to$ *Show*).
+   - Set the region to `us-east-1` and provide your S3 bucket name (or leave blank for local fallback).
+   - Click **Save & Connect**.
+
+> **Important Deployment & Runtime Notes:**
+> - **Free instance sleep:** Free Render web services sleep after ~15 minutes of inactivity. Open the URL a few minutes before a live demo to wake it up.
+> - **Credential persistence:** Credentials survive restarts for up to 4 hours **only when `BACKPLANE=redis`** (stored encrypted in Redis with TTL). In in-memory mode (`BACKPLANE=memory`), credentials must be re-pasted in the UI pill after any restart.
+> - **Security:** Keys and session tokens are never stored in environment variables or committed to the repository.
+
+
 ## Wire protocol (JSON text frames)
 
 Client → server: `join {room,lastSeq?}` (idempotent; doubles as *resume*), `leave`, `msg {room,text,cid}`, `typing`, `ping`.

@@ -22,6 +22,7 @@ export class MemoryHub {
   down = false;
   /** test hook: deliveries to these nodes are silently dropped (simulates lost pub/sub messages) */
   muted = new Set<MemoryBackplane>();
+  secrets = new Map<string, { value: string; exp: number }>();
 
   room(ref: RoomRef): RoomData {
     const k = refKey(ref);
@@ -120,5 +121,21 @@ export class MemoryBackplane implements Backplane {
     const r = this.hub.room(ref);
     const now = Date.now();
     return uniqueUsers([...r.presence].filter(([, exp]) => exp > now).map(([m]) => m));
+  }
+
+  async saveSecret(key: string, value: string, ttlSec: number): Promise<void> {
+    this.guard();
+    this.hub.secrets.set(key, { value, exp: Date.now() + ttlSec * 1000 });
+  }
+
+  async loadSecret(key: string): Promise<string | null> {
+    this.guard();
+    const entry = this.hub.secrets.get(key);
+    if (!entry) return null;
+    if (Date.now() > entry.exp) {
+      this.hub.secrets.delete(key);
+      return null;
+    }
+    return entry.value;
   }
 }

@@ -1464,19 +1464,26 @@
     </div>
 
     <div class="form-group">
-      <div class="form-label">AWS Access Key ID</div>
-      <input class="form-input" id="modal-aws-key" placeholder="ASIA..." autocomplete="off">
+      <div class="form-label">AWS CLI Credentials Block (Learner Lab)</div>
+      <textarea class="form-textarea" id="modal-aws-block" rows="5" placeholder="Paste the entire AWS CLI block here...&#10;&#10;[default]&#10;aws_access_key_id=ASIA...&#10;aws_secret_access_key=...&#10;aws_session_token=..." oninput="updateAwsBlockPreview()"></textarea>
+      <div id="modal-aws-preview" style="font-size:11px; margin-top:5px; font-family:'JetBrains Mono',monospace; min-height:16px;"></div>
     </div>
 
-    <div class="form-group">
-      <div class="form-label">AWS Secret Access Key</div>
-      <input class="form-input" id="modal-aws-secret" type="password" placeholder="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY" autocomplete="off">
-    </div>
-
-    <div class="form-group">
-      <div class="form-label">AWS Session Token (Vocareum Learner Lab)</div>
-      <textarea class="form-textarea" id="modal-aws-token" rows="3" placeholder="IQoJb3JpZ2luX2VjE... (required for Learner Lab)"></textarea>
-    </div>
+    <details style="margin-bottom:12px; font-size:12px; color:var(--text-muted);">
+      <summary style="font-weight:600; color:var(--text-normal); margin-bottom:8px; cursor:pointer;">Advanced: Enter fields manually</summary>
+      <div class="form-group" style="margin-top:8px;">
+        <div class="form-label">AWS Access Key ID</div>
+        <input class="form-input" id="modal-aws-key" placeholder="ASIA..." autocomplete="off">
+      </div>
+      <div class="form-group">
+        <div class="form-label">AWS Secret Access Key</div>
+        <input class="form-input" id="modal-aws-secret" type="password" placeholder="wJalrXUtnFEMI/..." autocomplete="off">
+      </div>
+      <div class="form-group">
+        <div class="form-label">AWS Session Token</div>
+        <textarea class="form-textarea" id="modal-aws-token" rows="2" placeholder="IQoJb3JpZ2lu..."></textarea>
+      </div>
+    </details>
 
     <div class="form-group">
       <div class="form-label">AWS Region</div>
@@ -1485,9 +1492,9 @@
 
     <div class="form-group">
       <div class="form-label">S3 Backup Bucket Name</div>
-      <input class="form-input" id="modal-aws-bucket" placeholder="ssd-chat-backups-948302796328">
+      <input class="form-input" id="modal-aws-bucket" placeholder="e.g. my-learner-lab-bucket (or leave blank for local)">
       <div style="font-size:10.5px; color:#8e9297; margin-top:3px;">
-        Must be a unique bucket created in your AWS Learner Lab account (e.g. <code style="color:#58a6ff;">ssd-chat-backups-948302796328</code>)
+        Unique S3 bucket name created in your AWS account (optional; falls back to local backup if unset)
       </div>
     </div>
 
@@ -2479,6 +2486,10 @@ function renderServicesGrid(services) {
 /* ================= AWS CLOUDWATCH MODAL ================= */
 async function openCwModal() {
   $('#cw-modal').className = 'open';
+  if ($('#modal-aws-block')) $('#modal-aws-block').value = '';
+  if ($('#modal-aws-preview')) $('#modal-aws-preview').innerHTML = '';
+  if ($('#modal-aws-secret')) $('#modal-aws-secret').value = '';
+  if ($('#modal-aws-token')) $('#modal-aws-token').value = '';
   try {
     const res = await fetch('/api/aws/status');
     const data = await res.json();
@@ -2489,6 +2500,76 @@ async function openCwModal() {
 }
 function closeCwModal() {
   $('#cw-modal').className = '';
+}
+
+function parseAwsBlock(text) {
+  let accessKeyId = '';
+  let secretAccessKey = '';
+  let sessionToken = '';
+  if (!text) return { accessKeyId, secretAccessKey, sessionToken };
+
+  const lines = text.split(/\r?\n/);
+  for (let rawLine of lines) {
+    let line = rawLine.trim();
+    if (!line || line.startsWith('#') || line.startsWith(';')) continue;
+    // Strip [default] or any INI section headers
+    if (/^\[.*\]$/.test(line)) continue;
+
+    // Supports:
+    // aws_access_key_id=...
+    // export AWS_ACCESS_KEY_ID=...
+    // set AWS_ACCESS_KEY_ID=...
+    // $Env:AWS_ACCESS_KEY_ID="..."
+    const m = line.match(/^(?:export\s+|set\s+|\$env:)?([a-zA-Z0-9_]+)\s*[:=]\s*(.*)$/i);
+    if (!m) continue;
+
+    const key = m[1].toLowerCase();
+    let val = m[2].trim();
+    if (val.endsWith(';')) val = val.slice(0, -1).trim();
+    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+      val = val.slice(1, -1);
+    }
+    val = val.trim();
+
+    if (key === 'aws_access_key_id' || key === 'access_key_id' || key === 'access_key') {
+      accessKeyId = val;
+    } else if (key === 'aws_secret_access_key' || key === 'secret_access_key' || key === 'secret_key') {
+      secretAccessKey = val;
+    } else if (key === 'aws_session_token' || key === 'session_token' || key === 'token' || key === 'aws_security_token') {
+      sessionToken = val;
+    }
+  }
+  return { accessKeyId, secretAccessKey, sessionToken };
+}
+
+function updateAwsBlockPreview() {
+  const block = $('#modal-aws-block')?.value || '';
+  const preview = $('#modal-aws-preview');
+  if (!preview) return;
+
+  if (!block.trim()) {
+    preview.innerHTML = '';
+    return;
+  }
+
+  const { accessKeyId, secretAccessKey, sessionToken } = parseAwsBlock(block);
+
+  if (!accessKeyId && !secretAccessKey) {
+    preview.innerHTML = '<span style="color:#f23f43;">⚠ Missing key and secret (no AWS credentials detected)</span>';
+    return;
+  }
+  if (!accessKeyId) {
+    preview.innerHTML = '<span style="color:#f23f43;">⚠ Missing key (AWS Access Key ID not found)</span>';
+    return;
+  }
+  if (!secretAccessKey) {
+    preview.innerHTML = '<span style="color:#f23f43;">⚠ Missing secret (AWS Secret Access Key not found)</span>';
+    return;
+  }
+
+  const keyDisplay = accessKeyId.length > 8 ? `${accessKeyId.slice(0, 4)}…${accessKeyId.slice(-4)}` : accessKeyId;
+  const tokenDisplay = sessionToken ? '✓' : '(none)';
+  preview.innerHTML = `<span style="color:#23a55a;">Detected: key ${escapeHtml(keyDisplay)}, secret ✓, token ${tokenDisplay}</span>`;
 }
 
 function cleanAwsField(val) {
@@ -2502,34 +2583,89 @@ function cleanAwsField(val) {
 }
 
 async function saveCwConfig() {
-  const accessKeyId = cleanAwsField($('#modal-aws-key').value);
-  const secretAccessKey = cleanAwsField($('#modal-aws-secret').value);
-  const sessionToken = cleanAwsField($('#modal-aws-token').value);
-  const region = $('#modal-aws-region').value.trim() || 'us-east-1';
+  const jwtToken = state.token || sessionStorage.getItem('chat_token');
+  if (!jwtToken) {
+    closeCwModal();
+    openLoginModal('Please log in first to configure AWS credentials.');
+    return;
+  }
+
+  const block = ($('#modal-aws-block')?.value || '').trim();
+  let accessKeyId = '';
+  let secretAccessKey = '';
+  let sessionToken = '';
+
+  if (block) {
+    const parsed = parseAwsBlock(block);
+    accessKeyId = parsed.accessKeyId;
+    secretAccessKey = parsed.secretAccessKey;
+    sessionToken = parsed.sessionToken;
+  }
+
+  // Fallback to manual fields in the Advanced collapsible
+  if (!accessKeyId) accessKeyId = cleanAwsField($('#modal-aws-key')?.value);
+  if (!secretAccessKey) secretAccessKey = cleanAwsField($('#modal-aws-secret')?.value);
+  if (!sessionToken) sessionToken = cleanAwsField($('#modal-aws-token')?.value);
+
+  const region = ($('#modal-aws-region')?.value || '').trim() || 'us-east-1';
   const bucketName = ($('#modal-aws-bucket')?.value || '').trim();
 
   if (!accessKeyId || !secretAccessKey) {
-    alert('Please enter your AWS Access Key ID and Secret Access Key.');
+    alert('Missing credentials: Enter or paste your AWS Access Key ID and Secret Access Key.');
     return;
   }
 
   const res = await fetch('/api/cloudwatch/config', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${jwtToken}`
+    },
     body: JSON.stringify({ accessKeyId, secretAccessKey, sessionToken, region, bucketName }),
   });
 
+  if (res.status === 401) {
+    alert('Please log in again');
+    closeCwModal();
+    openLoginModal('Please log in again');
+    return;
+  }
+
   if (res.ok) {
+    // Clear textarea and sensitive fields; never show secret or token afterward
+    if ($('#modal-aws-block')) $('#modal-aws-block').value = '';
+    if ($('#modal-aws-preview')) $('#modal-aws-preview').innerHTML = '';
+    if ($('#modal-aws-secret')) $('#modal-aws-secret').value = '';
+    if ($('#modal-aws-token')) $('#modal-aws-token').value = '';
     closeCwModal();
     testCwConnection();
   } else {
-    alert('Failed to save AWS credentials.');
+    const errData = await res.json().catch(() => ({}));
+    alert(errData.error ? `Failed to save AWS credentials: ${errData.error}` : 'Failed to save AWS credentials.');
   }
 }
 
 async function testCwConnection() {
+  const jwtToken = state.token || sessionStorage.getItem('chat_token');
+  if (!jwtToken) {
+    openLoginModal('Please log in first to test AWS credentials.');
+    return;
+  }
+
   try {
-    const res = await fetch('/api/cloudwatch/test', { method: 'POST' });
+    const res = await fetch('/api/cloudwatch/test', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${jwtToken}`
+      }
+    });
+
+    if (res.status === 401) {
+      alert('Please log in again');
+      openLoginModal('Please log in again');
+      return;
+    }
+
     const data = await res.json();
     if (data.success) {
       alert(`Success: ${data.message}`);

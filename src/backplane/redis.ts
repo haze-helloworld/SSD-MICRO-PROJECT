@@ -260,4 +260,12 @@ export class RedisBackplane implements Backplane {
     if (!out) throw new Error('pipeline failed');
     return uniqueUsers((out[1][1] as string[]) ?? []);
   }
+
+  async saveSecret(key: string, value: string, ttlSec: number): Promise<void> {
+    await this.cmd.set(key, value, 'EX', ttlSec);
+  }
+  async loadSecret(key: string): Promise<string | null> {
+    const res = await this.cmd.get(key);
+    return res ?? null;
+  }
 }

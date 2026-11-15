@@ -43,8 +43,8 @@ export class AwsIntegrationsService {
 
   private creds: CloudWatchCredentials | null = null;
   private tableName = process.env.AWS_DYNAMODB_TABLE || 'SSDMicroProject_MessageAudit';
-  private bucketName = process.env.AWS_S3_BUCKET || process.env.S3_BUCKET || 'ssd-chat-backups-948302796328';
-  private topicArn = process.env.AWS_SNS_TOPIC_ARN || 'arn:aws:sns:us-east-1:123456789012:SSDMicroProject_Alerts';
+  private bucketName = process.env.AWS_S3_BUCKET || process.env.S3_BUCKET || '';
+  private topicArn = process.env.AWS_SNS_TOPIC_ARN || '';
 
   private localAuditArchive: AuditMessageRecord[] = [];
   private itemsArchived = 0;
@@ -212,7 +212,7 @@ export class AwsIntegrationsService {
     bucket?: string;
     error?: string;
   }> {
-    const bucket = (targetBucket || this.bucketName || 'ssd-chat-backups-948302796328').trim();
+    const bucket = (targetBucket || this.bucketName || '').trim();
     const filename = `snapshot-${Date.now()}.json`;
     const key = `backups/${tenant}/${room}/${filename}`;
     const body = JSON.stringify({
@@ -236,13 +236,13 @@ export class AwsIntegrationsService {
       // ignore write error in read-only environments
     }
 
-    if (!this.s3Client) {
+    if (!this.s3Client || !bucket) {
       return {
         ok: true,
-        path: `s3://${bucket}/${key} (simulated local backup)`,
+        path: bucket ? `s3://${bucket}/${key} (simulated local backup)` : `local: ${localRelPath}`,
         savedLocally: true,
         localPath: localRelPath,
-        bucket,
+        bucket: bucket || '(not configured)',
       };
     }
 
@@ -301,7 +301,7 @@ export class AwsIntegrationsService {
     this.alertsSent++;
     this.lastAlert = `[${event.severity}] ${event.type}: ${event.details}`;
 
-    if (!this.snsClient) return;
+    if (!this.snsClient || !this.topicArn) return;
 
     try {
       const { PublishCommand } = await import('@aws-sdk/client-sns');

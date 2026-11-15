@@ -14,6 +14,7 @@ import { makeLogger, type Logger } from './logger.js';
 import { TokenBucket } from './ratelimit.js';
 import { ServicesRegistry } from './services.js';
 import { SimulationManager } from './simulation.js';
+import { decryptSecret, encryptSecret } from './secret-crypto.js';
 import { NAME_RE, USER_RE, refKey, type ClientFrame, type EventPayload, type RoomRef, type ServerFrame, type StoredMsg } from './types.js';
 
 interface Conn {
@@ -116,6 +117,7 @@ export class Gateway {
     await this.bp.start();
     // Subscribe to cluster-wide system event channel for cross-node AWS credential sync
     await this.bp.subscribe({ tenant: 'system', room: 'global' }).catch(() => undefined);
+    await this.restoreAwsCredentials();
     this.http = createServer((req, res) => void this.handleHttp(req, res));
     this.http.on('upgrade', (req, socket, head) => this.handleUpgrade(req, socket, head));
     await new Promise<void>((res) => this.http.listen(this.cfg.port, res));
@@ -294,6 +296,12 @@ export class Gateway {
     }
 
     if (url.pathname === '/api/cloudwatch/config' && req.method === 'POST') {
+      const authHeader = req.headers['authorization'];
+      const token = authHeader && /^Bearer\s+/i.test(authHeader) ? authHeader.replace(/^Bearer\s+/i, '').trim() : null;
+      if (!token || !verifyToken(token, this.cfg.jwtSecret)) {
+        return json(401, { error: 'Unauthorized' });
+      }
+
       try {
         const p = await readBody();
         const creds = {
@@ -305,6 +313,14 @@ export class Gateway {
         };
         const result = await this.cw.configure(creds);
         await this.aws.configure(creds);
+
+        // Encrypt credentials JSON and persist in backplane with 4-hour (14400s) TTL
+        try {
+          const encrypted = encryptSecret(JSON.stringify(creds), this.cfg.jwtSecret);
+          await this.bp.saveSecret('aws:creds', encrypted, 14400);
+        } catch (e: any) {
+          this.log.debug('failed to persist AWS credentials in backplane', { err: String(e) });
+        }
 
         // Broadcast to all other gateway replicas in the cluster via Redis
         void this.bp.publishEvent({ tenant: 'system', room: 'global' }, {
@@ -319,6 +335,12 @@ export class Gateway {
     }
 
     if (url.pathname === '/api/cloudwatch/test' && req.method === 'POST') {
+      const authHeader = req.headers['authorization'];
+      const token = authHeader && /^Bearer\s+/i.test(authHeader) ? authHeader.replace(/^Bearer\s+/i, '').trim() : null;
+      if (!token || !verifyToken(token, this.cfg.jwtSecret)) {
+        return json(401, { error: 'Unauthorized' });
+      }
+
       const result = await this.cw.testConnection();
       return json(200, result);
     }
@@ -744,6 +766,7 @@ export class Gateway {
 
   /** Redis came back: every room fills the hole between what it delivered and the log head. */
   private onBackplaneUp() {
+    void this.restoreAwsCredentials();
     for (const rs of this.rooms.values()) {
       void rs
         .run(async () => {
@@ -759,6 +782,22 @@ export class Gateway {
           }
         })
         .catch((e) => this.log.warn('catch-up failed', { err: String(e) }));
+    }
+  }
+
+  private async restoreAwsCredentials(): Promise<void> {
+    try {
+      const encrypted = await this.bp.loadSecret('aws:creds');
+      if (!encrypted) return;
+      const raw = decryptSecret(encrypted, this.cfg.jwtSecret);
+      const creds = JSON.parse(raw);
+      if (creds && typeof creds === 'object') {
+        await this.cw.configure(creds);
+        await this.aws.configure(creds);
+        this.log.info('restored AWS credentials from backplane secret');
+      }
+    } catch (err: any) {
+      this.log.debug('failed to restore AWS credentials from backplane', { err: String(err) });
     }
   }
 

@@ -11,7 +11,7 @@ terraform {
   }
 }
 
-variable "region"         { default = "ap-south-1" }
+variable "region"         { default = "us-east-1" }
 variable "repo_url"       { description = "Git URL of this project (HTTPS, public or with token)" }
 variable "jwt_secret"     { sensitive = true }
 variable "gateway_count"  { default = 2 }

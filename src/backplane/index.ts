@@ -41,6 +41,9 @@ export interface Backplane {
   presenceSync(ref: RoomRef, localMembers: string[], ttlMs: number): Promise<string[]>;
   presenceRemove(ref: RoomRef, member: string): Promise<void>;
   presenceList(ref: RoomRef): Promise<string[]>;
+
+  saveSecret(key: string, value: string, ttlSec: number): Promise<void>;
+  loadSecret(key: string): Promise<string | null>;
 }
 
 /** presence member format: `<user>#<connId>` */

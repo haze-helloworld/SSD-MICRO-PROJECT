@@ -13,7 +13,7 @@
     "dev": "tsx src/server.ts",
     "start": "tsx src/server.ts",
     "start:prod": "node dist/src/server.js",
-    "test": "tsx --test tests/unit.test.ts tests/observability.test.ts",
+    "test": "tsx --test tests/unit.test.ts tests/observability.test.ts tests/secrets-and-cloudwatch.test.ts",
     "test:integration": "tsx --test --test-concurrency=1 tests/integration.test.ts",
     "test:fault": "tsx --test --test-concurrency=1 tests/fault.test.ts",
     "test:all": "tsx --test --test-concurrency=1 tests/*.test.ts",

@@ -64,20 +64,6 @@ describe('observability & simulation endpoints', () => {
       const resSimStop = await fetch(`http://127.0.0.1:${gw.port}/api/simulation/stop`, { method: 'POST' });
       assert.equal(resSimStop.status, 200);
 
-      // Test CloudWatch config endpoint
-      const resCwConfig = await fetch(`http://127.0.0.1:${gw.port}/api/cloudwatch/config`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          accessKeyId: 'AKIA_TEST_KEY',
-          secretAccessKey: 'SECRET_TEST_KEY',
-          region: 'us-east-1',
-        }),
-      });
-      assert.equal(resCwConfig.status, 200);
-      const dataCwConfig = await resCwConfig.json();
-      assert.equal(dataCwConfig.success, true);
-
       // Test Production Auth /api/auth/login
       const resLogin = await fetch(`http://127.0.0.1:${gw.port}/api/auth/login`, {
         method: 'POST',
@@ -96,9 +82,25 @@ describe('observability & simulation endpoints', () => {
       const dataVerify = await resVerify.json();
       assert.equal(dataVerify.ok, true);
       assert.equal(dataVerify.claims.user, 'alice');
+
+      // Test CloudWatch config endpoint (with valid Bearer token)
+      const resCwConfig = await fetch(`http://127.0.0.1:${gw.port}/api/cloudwatch/config`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${dataLogin.token}`,
+        },
+        body: JSON.stringify({
+          accessKeyId: 'AKIA_TEST_KEY',
+          secretAccessKey: 'SECRET_TEST_KEY',
+          region: 'us-east-1',
+        }),
+      });
+      assert.equal(resCwConfig.status, 200);
+      const dataCwConfig = await resCwConfig.json();
+      assert.equal(dataCwConfig.success, true);
     } finally {
       await gw.stop(0);
     }
   });
 });
-
