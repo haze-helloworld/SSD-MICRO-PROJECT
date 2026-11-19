@@ -152,6 +152,35 @@ resource "aws_lb_listener" "tcp80" {
   }
 }
 
-output "nlb_dns"       { value = aws_lb.nlb.dns_name }
-output "ws_url"        { value = "ws://${aws_lb.nlb.dns_name}/ws" }
-output "redis_endpoint" { value = aws_elasticache_replication_group.redis.primary_endpoint_address }
+# ---- DynamoDB message audit archive
+resource "aws_dynamodb_table" "message_audit" {
+  name         = "SSDMicroProject_MessageAudit"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "pk"
+  range_key    = "sk"
+
+  attribute {
+    name = "pk"
+    type = "S"
+  }
+
+  attribute {
+    name = "sk"
+    type = "N"
+  }
+
+  ttl {
+    attribute_name = "ttl"
+    enabled        = true
+  }
+
+  tags = {
+    Project     = "SSD-Micro-Project"
+    Environment = "production"
+  }
+}
+
+output "nlb_dns"        { value = aws_lb.nlb.dns_name }
+output "ws_url"         { value = "ws://${aws_lb.nlb.dns_name}/ws" }
+output "redis_endpoint"  { value = aws_elasticache_replication_group.redis.primary_endpoint_address }
+output "dynamodb_table" { value = aws_dynamodb_table.message_audit.name }

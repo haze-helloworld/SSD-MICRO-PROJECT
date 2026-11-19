@@ -3,6 +3,8 @@
 
 declare module '@aws-sdk/client-dynamodb' {
   export const DynamoDBClient: any;
+  export const CreateTableCommand: any;
+  export const DescribeTableCommand: any;
 }
 
 declare module '@aws-sdk/lib-dynamodb' {
@@ -21,6 +23,7 @@ declare module '@aws-sdk/client-s3' {
 declare module '@aws-sdk/client-sns' {
   export const SNSClient: any;
   export const PublishCommand: any;
+  export const CreateTopicCommand: any;
 }
 
 declare module '@aws-sdk/client-cloudwatch' {

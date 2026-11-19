@@ -38,6 +38,7 @@ export interface AwsServicesStatus {
 
 export class AwsIntegrationsService {
   private dynamoDoc: any = null;
+  private ddbRawClient: any = null;
   private s3Client: any = null;
   private snsClient: any = null;
 
@@ -130,9 +131,12 @@ export class AwsIntegrationsService {
 
       if (ddbMod.status === 'fulfilled' && ddbDocMod.status === 'fulfilled') {
         const ddbClient = new ddbMod.value.DynamoDBClient(awsConfig);
+        this.ddbRawClient = ddbClient;
         this.dynamoDoc = ddbDocMod.value.DynamoDBDocumentClient.from(ddbClient);
         this.dynamoError = null;
+        void this.ensureDynamoTable().catch(() => undefined);
       } else {
+        this.ddbRawClient = null;
         this.dynamoDoc = null;
       }
 
@@ -146,6 +150,7 @@ export class AwsIntegrationsService {
       if (snsMod.status === 'fulfilled') {
         this.snsClient = new snsMod.value.SNSClient(awsConfig);
         this.snsError = null;
+        void this.ensureSnsTopic().catch(() => undefined);
       } else {
         this.snsClient = null;
       }
@@ -157,6 +162,54 @@ export class AwsIntegrationsService {
       this.s3Error = msg;
       this.snsError = msg;
       return { success: false, error: msg };
+    }
+  }
+
+  /**
+   * Auto-provisions the DynamoDB message audit table in AWS if missing.
+   */
+  async ensureDynamoTable(): Promise<void> {
+    if (!this.ddbRawClient) return;
+    try {
+      const { CreateTableCommand } = await import('@aws-sdk/client-dynamodb');
+      await this.ddbRawClient.send(
+        new CreateTableCommand({
+          TableName: this.tableName,
+          AttributeDefinitions: [
+            { AttributeName: 'pk', AttributeType: 'S' },
+            { AttributeName: 'sk', AttributeType: 'N' },
+          ],
+          KeySchema: [
+            { AttributeName: 'pk', KeyType: 'HASH' },
+            { AttributeName: 'sk', KeyType: 'RANGE' },
+          ],
+          BillingMode: 'PAY_PER_REQUEST',
+        })
+      );
+    } catch (err: any) {
+      if (err.name !== 'ResourceInUseException') {
+        // Table might already exist or creation in progress
+      }
+    }
+  }
+
+  /**
+   * Auto-provisions the SNS security alerts topic in AWS if not already set.
+   */
+  async ensureSnsTopic(): Promise<void> {
+    if (!this.snsClient || this.topicArn) return;
+    try {
+      const { CreateTopicCommand } = await import('@aws-sdk/client-sns');
+      const res = await this.snsClient.send(
+        new CreateTopicCommand({
+          Name: 'SSDMicroProject_SecurityAlerts',
+        })
+      );
+      if (res && res.TopicArn) {
+        this.topicArn = res.TopicArn;
+      }
+    } catch (err: any) {
+      // Learner Lab or IAM restrictions: fallback to local logging
     }
   }
 
@@ -174,22 +227,39 @@ export class AwsIntegrationsService {
 
     try {
       const { PutCommand } = await import('@aws-sdk/lib-dynamodb');
-      await this.dynamoDoc.send(
-        new PutCommand({
-          TableName: this.tableName,
-          Item: {
-            pk: `${record.tenant}#${record.room}`,
-            sk: record.seq,
-            user: record.user,
-            text: record.text,
-            cid: record.cid,
-            ts: record.ts,
-            node: record.node,
-            ttl: Math.floor(Date.now() / 1000) + 86400 * 7, // 7 days retention
-          },
-        })
-      );
-      this.dynamoError = null;
+      const item = {
+        pk: `${record.tenant}#${record.room}`,
+        sk: record.seq,
+        user: record.user,
+        text: record.text,
+        cid: record.cid,
+        ts: record.ts,
+        node: record.node,
+        ttl: Math.floor(Date.now() / 1000) + 86400 * 7, // 7 days retention
+      };
+
+      try {
+        await this.dynamoDoc.send(
+          new PutCommand({
+            TableName: this.tableName,
+            Item: item,
+          })
+        );
+        this.dynamoError = null;
+      } catch (putErr: any) {
+        if (putErr.name === 'ResourceNotFoundException' || putErr.Code === 'ResourceNotFoundException') {
+          await this.ensureDynamoTable();
+          await this.dynamoDoc.send(
+            new PutCommand({
+              TableName: this.tableName,
+              Item: item,
+            })
+          );
+          this.dynamoError = null;
+        } else {
+          throw putErr;
+        }
+      }
     } catch (err: any) {
       this.dynamoError = err.message || String(err);
     }
@@ -301,7 +371,11 @@ export class AwsIntegrationsService {
     this.alertsSent++;
     this.lastAlert = `[${event.severity}] ${event.type}: ${event.details}`;
 
-    if (!this.snsClient || !this.topicArn) return;
+    if (!this.snsClient) return;
+    if (!this.topicArn) {
+      await this.ensureSnsTopic();
+    }
+    if (!this.topicArn) return;
 
     try {
       const { PublishCommand } = await import('@aws-sdk/client-sns');
